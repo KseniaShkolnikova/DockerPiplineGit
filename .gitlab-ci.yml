@@ -10,22 +10,48 @@ variables:
 
 
 
-# 3. Функциональная задача 1: Проверка подключения к БД
-database-connection:
+database-check:
   stage: test
   script:
-    - echo "=== ПРОВЕРКА POSTGRESQL ==="
-    # PostgreSQL процесс работает (уже видно)
-    - pgrep postgres && echo "✅ PostgreSQL процесс работает"
+    - echo "=== РЕАЛЬНАЯ ПРОВЕРКА POSTGRESQL ==="
     
-    # Попробуй подключиться через socket (peer auth)
-    - psql -U $(whoami) -d postgres -c "SELECT 1;" 2>/dev/null && echo "✅ Подключение через peer auth работает"
+    # 1. Проверяем что PostgreSQL слушает порт 5432
+    - if netstat -tuln | grep -q ":5432 "; then
+        echo "✅ PostgreSQL слушает порт 5432";
+      else
+        echo "❌ PostgreSQL НЕ слушает порт 5432";
+        exit 1;
+      fi
     
-    # Или подключись к созданной БД mpted
-    - psql -d mpted -c "SELECT 1;" 2>/dev/null && echo "✅ БД mpted доступна" || echo "⚠️  БД mpted требует аутентификации"
+    # 2. Проверяем что можем подключиться к серверу
+    - if pg_isready -h localhost -p 5432; then
+        echo "✅ PostgreSQL принимает подключения";
+      else
+        echo "❌ PostgreSQL НЕ принимает подключения";
+        exit 1;
+      fi
     
-    # Проверь версию PostgreSQL
-    - sudo -u postgres psql -c "SELECT version();" 2>/dev/null | head -1 && echo "✅ PostgreSQL версия получена"
+    # 3. Проверяем что БД 'mpted' существует
+    - if sudo -u postgres psql -l | grep -q mpted; then
+        echo "✅ БД 'mpted' существует";
+      else
+        echo "❌ БД 'mpted' НЕ существует";
+        exit 1;
+      fi
     
-    - echo "✅ Проверка PostgreSQL завершена успешно"
-# 4. Функциональная задача 2: Сбор статических файлов
+    # 4. Проверяем что можем подключиться к БД 'mpted'
+    - if sudo -u postgres psql -d mpted -c "SELECT 1;" >/dev/null 2>&1; then
+        echo "✅ Можем подключиться к БД 'mpted'";
+      else
+        echo "❌ НЕ можем подключиться к БД 'mpted'";
+        exit 1;
+      fi
+    
+    # 5. Проверяем базовые таблицы (если знаешь какую-то таблицу)
+    - if sudo -u postgres psql -d mpted -c "\dt" 2>/dev/null | grep -q "auth_user"; then
+        echo "✅ Таблица 'auth_user' существует (пример)";
+      else
+        echo "⚠️  Таблицы могут быть пустыми";
+      fi
+    
+    - echo "✅ PostgreSQL полностью настроен и работает!"
