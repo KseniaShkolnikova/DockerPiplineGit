@@ -11,18 +11,12 @@ variables:
 build-validation:
   stage: build
   before_script:
-    - apt-get update && apt-get install -y postgresql libpq-dev python3-dev gcc
-    - service postgresql start
-    - sleep 2
-    - psql -U postgres -c "\l" || echo "PostgreSQL не запущен"
-    - psql -d mpted -U postgres -c "SELECT 1;" || echo "БД mpted не доступна"
     - python3 -m venv $VENV_PATH
     - source $VENV_PATH/bin/activate
     - pip install --upgrade pip
     - pip install -r requirements.txt
   script:
     - source $VENV_PATH/bin/activate
-    - echo "=== ПРОВЕРКА СБОРКИ ПРОЕКТА ==="
     - python3 manage.py check
     - echo "✅ Проект успешно собирается"
 
@@ -30,55 +24,38 @@ build-validation:
 code-lint:
   stage: lint
   before_script:
-    - apt-get update && apt-get install -y postgresql libpq-dev python3-dev gcc
-    - service postgresql start
-    - sleep 2
     - python3 -m venv $VENV_PATH
     - source $VENV_PATH/bin/activate
     - pip install --upgrade pip
     - pip install -r requirements.txt
   script:
     - source $VENV_PATH/bin/activate
-    - echo "=== ПРОВЕРКА СИНТАКСИСА ==="
     - find . -name "*.py" -not -path "./$VENV_PATH/*" -exec python3 -m py_compile {} \;
     - echo "✅ Синтаксических ошибок не найдено"
-
-
-# 4. Функциональная задача 2: Сбор статических файлов
-static-files-collect:
-  stage: test
-  before_script:
-    - apt-get update && apt-get install -y postgresql libpq-dev python3-dev gcc
-    - service postgresql start
-    - sleep 2
-    - python3 -m venv $VENV_PATH
-    - source $VENV_PATH/bin/activate
-    - pip install --upgrade pip
-    - pip install -r requirements.txt
-  script:
-    - source $VENV_PATH/bin/activate
-    - echo "=== СБОР СТАТИЧЕСКИХ ФАЙЛОВ ==="
-    - mkdir -p staticfiles
-    - python3 manage.py collectstatic --noinput
-    - echo "✅ Собрано статических файлов:"
-    - du -sh staticfiles/
-    - echo "Количество файлов:"
-    - find staticfiles/ -type f | wc -l
 
 # 3. Функциональная задача 1: Проверка подключения к БД
 database-connection:
   stage: test
   before_script:
-    - apt-get update && apt-get install -y postgresql libpq-dev python3-dev gcc
-    - service postgresql start
-    - sleep 2
-    - psql -U postgres -c "\l" || echo "PostgreSQL не запущен"
-    - psql -d mpted -U postgres -c "SELECT 1;" || echo "БД mpted не доступна"
     - python3 -m venv $VENV_PATH
     - source $VENV_PATH/bin/activate
     - pip install --upgrade pip
     - pip install -r requirements.txt
   script:
     - source $VENV_PATH/bin/activate
-    - echo "=== ПРОВЕРКА ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ ==="
-    - python3 -c "import os; import django; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'project.settings'); django.setup(); from django.db import connection; print('Проверка подключения к PostgreSQL...'); cursor = connection.cursor(); cursor.execute('SELECT version();'); version = cursor.fetchone(); print('✅ Подключение успешно! Версия:', version[0])"
+    - python3 -c "import django; django.setup(); from django.db import connection; cursor = connection.cursor(); cursor.execute('SELECT 1;'); print('✅ Подключение к БД успешно')"
+
+# 4. Функциональная задача 2: Сбор статических файлов
+static-files-collect:
+  stage: test
+  before_script:
+    - python3 -m venv $VENV_PATH
+    - source $VENV_PATH/bin/activate
+    - pip install --upgrade pip
+    - pip install -r requirements.txt
+  script:
+    - source $VENV_PATH/bin/activate
+    - mkdir -p staticfiles
+    - python3 manage.py collectstatic --noinput
+    - echo "✅ Собрано статических файлов:"
+    - du -sh staticfiles/
