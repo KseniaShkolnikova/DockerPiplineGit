@@ -8,50 +8,31 @@ variables:
   VENV_PATH: ".venv"
 
 
-
-
+# 3. Функциональная задача 1: Проверка подключения к БД
 database-check:
   stage: test
   script:
-    - echo "=== РЕАЛЬНАЯ ПРОВЕРКА POSTGRESQL ==="
+    - echo "=== ПРОВЕРКА РЕАЛЬНОЙ БД mpted ==="
     
-    # 1. Проверяем что PostgreSQL слушает порт 5432
-    - if netstat -tuln | grep -q ":5432 "; then
-        echo "✅ PostgreSQL слушает порт 5432";
+    # Устанавливаем пароль как в settings.py
+    - export PGPASSWORD=1
+    
+    # Пробуем подключиться как в Django настройках
+    - if psql -h 127.0.0.1 -p 5432 -U postgres -d mpted -c "SELECT 1;"; then
+        echo "✅ Подключение к БД mpted успешно!";
+        
+        # Проверяем таблицы
+        - echo "Таблицы в БД:";
+        - psql -h 127.0.0.1 -p 5432 -U postgres -d mpted -c "\dt";
+        
       else
-        echo "❌ PostgreSQL НЕ слушает порт 5432";
-        exit 1;
+        echo "❌ Не удалось подключиться с паролем";
+        echo "Пробуем через sudo...";
+        
+        - if sudo -u postgres psql -d mpted -c "SELECT 1;"; then
+            echo "✅ Работает через sudo";
+          else
+            echo "❌ Совсем не работает";
+            exit 1;
+          fi
       fi
-    
-    # 2. Проверяем что можем подключиться к серверу
-    - if pg_isready -h localhost -p 5432; then
-        echo "✅ PostgreSQL принимает подключения";
-      else
-        echo "❌ PostgreSQL НЕ принимает подключения";
-        exit 1;
-      fi
-    
-    # 3. Проверяем что БД 'mpted' существует
-    - if sudo -u postgres psql -l | grep -q mpted; then
-        echo "✅ БД 'mpted' существует";
-      else
-        echo "❌ БД 'mpted' НЕ существует";
-        exit 1;
-      fi
-    
-    # 4. Проверяем что можем подключиться к БД 'mpted'
-    - if sudo -u postgres psql -d mpted -c "SELECT 1;" >/dev/null 2>&1; then
-        echo "✅ Можем подключиться к БД 'mpted'";
-      else
-        echo "❌ НЕ можем подключиться к БД 'mpted'";
-        exit 1;
-      fi
-    
-    # 5. Проверяем базовые таблицы (если знаешь какую-то таблицу)
-    - if sudo -u postgres psql -d mpted -c "\dt" 2>/dev/null | grep -q "auth_user"; then
-        echo "✅ Таблица 'auth_user' существует (пример)";
-      else
-        echo "⚠️  Таблицы могут быть пустыми";
-      fi
-    
-    - echo "✅ PostgreSQL полностью настроен и работает!"
