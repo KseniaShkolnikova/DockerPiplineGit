@@ -1,0 +1,459 @@
+<!-- attendance_student/templates/attendance_student/attendance_dashboard.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Посещаемость - MPTed{% endblock %}
+
+{% block extra_css %}
+<style>
+    .attendance-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    
+    .attendance-table th {
+        background: var(--card);
+        color: var(--text);
+        font-weight: 600;
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 2px solid var(--border);
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .attendance-table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+    }
+    
+    .attendance-table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .attendance-table tr:hover {
+        background-color: rgba(124, 58, 237, 0.03);
+    }
+    
+    .attendance-value {
+        display: inline-block;
+        min-width: 32px;
+        height: 32px;
+        line-height: 32px;
+        text-align: center;
+        font-weight: 600;
+        font-size: 0.875rem;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+    
+    .value-present {
+        /* Пусто - был на уроке */
+        background: transparent;
+        color: transparent;
+    }
+    
+    .value-late {
+        background-color: #fef3c7;
+        color: #d97706;
+        border: 1px solid #f59e0b;
+    }
+    
+    .value-absent {
+        background-color: #fee2e2;
+        color: #dc2626;
+        border: 1px solid #ef4444;
+    }
+    
+    .dark-theme .value-late {
+        background-color: rgba(245, 158, 11, 0.2);
+        color: #fbbf24;
+        border-color: #f59e0b;
+    }
+    
+    .dark-theme .value-absent {
+        background-color: rgba(239, 68, 68, 0.2);
+        color: #f87171;
+        border-color: #ef4444;
+    }
+    
+    .day-header {
+        background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px 12px 0 0;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .day-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 100px;
+        height: 100px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        transform: translate(30%, -30%);
+    }
+    
+    .day-name {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    
+    .day-date {
+        opacity: 0.9;
+        font-size: 0.875rem;
+    }
+    
+    .today-badge {
+        position: absolute;
+        top: 1rem;
+        right: 1.5rem;
+        background: white;
+        color: #7c3aed;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .day-card {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        background: var(--card);
+        margin-bottom: 1.5rem;
+    }
+    
+    .day-stats {
+        padding: 1rem 1.5rem;
+        background: rgba(124, 58, 237, 0.05);
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .stat-item {
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 0.25rem;
+    }
+    
+    .stat-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .attendance-rate {
+        font-size: 1.25rem;
+        font-weight: 600;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+    }
+    
+    .overview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .overview-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: all 0.3s;
+    }
+    
+    .overview-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .dark-theme .overview-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    
+    .overview-value {
+        font-size: 2rem;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 0.5rem;
+    }
+    
+    .overview-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+    }
+    
+    .no-lessons {
+        padding: 3rem 1rem;
+        text-align: center;
+        color: var(--text-secondary);
+    }
+    
+    .no-lessons-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .legend {
+        display: flex;
+        gap: 1.5rem;
+        justify-content: center;
+        padding: 1rem;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-top: 2rem;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .empty-value {
+        display: inline-block;
+        width: 32px;
+        height: 32px;
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 6px;
+    }
+    
+    .dark-theme .empty-value {
+        background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .subject-name {
+        font-weight: 600;
+        color: var(--text);
+    }
+    
+    .teacher-name {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+    
+    .lesson-time {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+    
+    @media (max-width: 768px) {
+        .attendance-table {
+            display: block;
+            overflow-x: auto;
+        }
+        
+        .overview-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .day-stats {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+        
+        .legend {
+            flex-direction: column;
+            gap: 0.75rem;
+            align-items: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "student/_sidebar.html" %}
+
+    <main class="main-content">
+        {% if not has_group %}
+        <!-- Сообщение если ученик не в группе -->
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="mb-4" style="font-size: 3rem; color: var(--text-secondary); opacity: 0.3;">
+                    👨‍🎓
+                </div>
+                <h2 class="mb-3">Вы не привязаны к учебной группе</h2>
+                <p class="text-muted mb-4">
+                    Для просмотра посещаемости необходимо быть привязанным к учебной группе.
+                    Обратитесь к администратору или классному руководителю.
+                </p>
+                <a href="{% url 'student_dashboard' %}" class="btn btn-primary">
+                    Вернуться на главную
+                </a>
+            </div>
+        </div>
+        {% else %}
+        <!-- Общая статистика -->
+        <div class="content-header mb-6">
+            <div>
+                <h1 class="content-title">Посещаемость</h1>
+                <p class="content-subtitle">Позавчера, вчера, сегодня</p>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'attendance_student:attendance_history' %}" class="btn btn-outline">
+                    История по предметам
+                </a>
+            </div>
+        </div>
+
+        <!-- Общий обзор -->
+        <div class="overview-grid">
+            <div class="overview-card">
+                <div class="overview-value">{{ total_lessons }}</div>
+                <div class="overview-label">Всего уроков</div>
+            </div>
+            <div class="overview-card">
+                <div class="overview-value text-success">{{ present_count }}</div>
+                <div class="overview-label">Был на уроках</div>
+            </div>
+            <div class="overview-card">
+                <div class="overview-value text-warning">{{ late_count }}</div>
+                <div class="overview-label">Опоздал</div>
+            </div>
+            <div class="overview-card">
+                <div class="overview-value text-danger">{{ absent_count }}</div>
+                <div class="overview-label">Не был</div>
+            </div>
+        </div>
+
+        <!-- Дни -->
+        {% for day in attendance_data %}
+        <div class="day-card">
+            <div class="day-header">
+                <div>
+                    <div class="day-name">{{ day.name }}</div>
+                    <div class="day-date">{{ day.date|date:"d.m.Y" }}</div>
+                </div>
+                {% if day.is_today %}
+                <div class="today-badge">Сегодня</div>
+                {% endif %}
+                {% if day.has_lessons %}
+                <div class="attendance-rate">
+                    {{ day.stats.attendance_rate }}%
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if day.is_weekend %}
+            <div class="no-lessons">
+                <div class="no-lessons-title">Выходной день</div>
+                <p>По расписанию уроков нет</p>
+            </div>
+            {% elif day.has_lessons %}
+            <div class="table-responsive">
+                <table class="attendance-table">
+                    <thead>
+                        <tr>
+                            <th width="15%">Урок</th>
+                            <th width="40%">Предмет</th>
+                            <th width="25%">Учитель</th>
+                            <th width="20%">Посещаемость</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lesson in day.lessons %}
+                        <tr>
+                            <td>
+                                <div>{{ lesson.lesson_number }} урок</div>
+                                <div class="lesson-time">{{ lesson.time }}</div>
+                            </td>
+                            <td>
+                                <div class="subject-name">{{ lesson.subject.name }}</div>
+                            </td>
+                            <td>
+                                <div class="teacher-name">{{ lesson.teacher.get_full_name }}</div>
+                            </td>
+                            <td>
+                                {% if lesson.display_value %}
+                                <span class="attendance-value 
+                                    {% if lesson.status == 'late' %}value-late
+                                    {% elif lesson.status == 'absent' %}value-absent{% endif %}">
+                                    {{ lesson.display_value }}
+                                </span>
+                                {% else %}
+                                <span class="empty-value"></span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="day-stats">
+                <div class="stat-item">
+                    <div class="stat-value">{{ day.stats.present }}</div>
+                    <div class="stat-label">Был</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ day.stats.late }}</div>
+                    <div class="stat-label">Опоздал</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ day.stats.absent }}</div>
+                    <div class="stat-label">Не был</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ day.stats.total }}</div>
+                    <div class="stat-label">Всего</div>
+                </div>
+            </div>
+            {% else %}
+            <div class="no-lessons">
+                <div class="no-lessons-title">Нет уроков</div>
+                <p>По расписанию на этот день уроков нет</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <!-- Легенда -->
+        <div class="legend">
+            <div class="legend-item">
+                <span class="empty-value"></span>
+                <span>Был на уроке</span>
+            </div>
+            <div class="legend-item">
+                <span class="attendance-value value-late">О</span>
+                <span>Опоздал</span>
+            </div>
+            <div class="legend-item">
+                <span class="attendance-value value-absent">НБ</span>
+                <span>Не был</span>
+            </div>
+        </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

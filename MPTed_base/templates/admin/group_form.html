@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if group %}Редактирование класса{% else %}Создание класса{% endif %}{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "includes/sidebar.html" %}
+    
+    <main class="main-content">
+        <div class="content-header">
+            <div>
+                <h1 class="content-title">
+                    {% if group %}
+                    Редактирование класса: {{ group.name }}
+                    {% else %}
+                    Создание нового класса
+                    {% endif %}
+                </h1>
+                <p class="content-subtitle">
+                    {% if group %}
+                    Измените информацию о классе
+                    {% else %}
+                    Заполните форму для создания нового класса (1-4 курс)
+                    {% endif %}
+                </p>
+            </div>
+            <a href="{% url 'groups_list' %}" class="btn btn-outline">
+                <i class="bi bi-arrow-left"></i> Назад к списку
+            </a>
+        </div>
+
+        <!-- Сообщения -->
+        {% if messages %}
+        <div class="space-y-3 mb-6">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                <span>{{ message }}</span>
+                <button type="button" class="btn-close" onclick="this.parentElement.style.display='none'">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Форма -->
+            <div class="lg:col-span-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Основная информация</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="post">
+                            {% csrf_token %}
+                            
+                            <div class="form-group">
+                                <label for="name" class="form-label">
+                                    <i class="bi bi-tag"></i> Название класса
+                                </label>
+                                <input type="text" 
+                                       id="name" 
+                                       name="name" 
+                                       class="form-control" 
+                                       value="{{ group.name|default:'' }}"
+                                       placeholder="Например: 10А, Группа-1, ПИ-21"
+                                       required>
+                                <div class="form-hint">Уникальное название класса</div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="year" class="form-label">
+                                    <i class="bi bi-mortarboard"></i> Курс обучения
+                                </label>
+                                <select id="year" name="year" class="form-control" required>
+                                    <option value="">Выберите курс</option>
+                                    {% for i in "1234" %}
+                                    <option value="{{ i }}" 
+                                            {% if group.year == i|add:0 %}selected{% endif %}>
+                                        {{ i }} курс
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-hint">Выберите курс обучения (от 1 до 4)</div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="curator" class="form-label">
+                                    <i class="bi bi-person-badge"></i> Классный руководитель
+                                </label>
+                                <select id="curator" name="curator" class="form-control">
+                                    <option value="">Не назначен</option>
+                                    {% for teacher in teachers %}
+                                    <option value="{{ teacher.id }}" 
+                                            {% if group.curator.id == teacher.id %}selected{% endif %}>
+                                        {{ teacher.last_name }} {{ teacher.first_name }}
+                                        {% if teacher.email %} ({{ teacher.email }}){% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-hint">Выберите учителя из списка</div>
+                            </div>
+                            
+                            <div class="flex gap-2 mt-6">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle"></i>
+                                    {% if group %}Сохранить изменения{% else %}Создать класс{% endif %}
+                                </button>
+                                <a href="{% url 'groups_list' %}" class="btn btn-outline">
+                                    Отмена
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Информация -->
+            <div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Информация</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="space-y-4">
+                            <div>
+                                <h4 class="text-sm font-medium text-muted mb-2">Правила создания классов</h4>
+                                <ul class="text-sm space-y-2">
+                                    <li class="flex items-start gap-2">
+                                        <i class="bi bi-check-circle text-success mt-0.5"></i>
+                                        <span>Название должно быть уникальным</span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <i class="bi bi-check-circle text-success mt-0.5"></i>
+                                        <span>Курс обучения от 1 до 4</span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <i class="bi bi-check-circle text-success mt-0.5"></i>
+                                        <span>Классным руководителем может быть только учитель</span>
+                                    </li>
+                                    <li class="flex items-start gap-2">
+                                        <i class="bi bi-check-circle text-success mt-0.5"></i>
+                                        <span>В класс можно добавлять только учеников</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            
+                            {% if group %}
+                            <div>
+                                <h4 class="text-sm font-medium text-muted mb-2">Статистика класса</h4>
+                                <div class="text-sm space-y-1">
+                                    <div class="flex justify-between py-2 border-b">
+                                        <span class="text-muted">Учеников:</span>
+                                        <span class="font-medium">{{ group.students.count }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="pt-2">
+                                <a href="{% url 'group_students' group.id %}" class="btn btn-outline w-full">
+                                    <i class="bi bi-people"></i> Управление учениками
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+    .mt-0\.5 { margin-top: 0.125rem; }
+    .pt-2 { padding-top: 0.5rem; }
+    
+    .form-control[type="number"] {
+        -moz-appearance: textfield;
+    }
+    
+    .form-control[type="number"]::-webkit-outer-spin-button,
+    .form-control[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    
+    select.form-control {
+        cursor: pointer;
+    }
+</style>
+{% endblock %}

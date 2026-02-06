@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Управление учениками в классе - Админ панель{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "includes/sidebar.html" %}
+    
+    <main class="main-content">
+        <div class="content-header">
+            <div>
+                <h1 class="content-title">Управление учениками</h1>
+                <p class="content-subtitle">Класс: {{ group.name }} ({{ group.year }} курс)</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="{% url 'group_edit' group.id %}" class="btn btn-outline">
+                    <i class="bi bi-pencil"></i> Редактировать класс
+                </a>
+                <a href="{% url 'groups_list' %}" class="btn btn-outline">
+                    <i class="bi bi-arrow-left"></i> Все классы
+                </a>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <!-- Ученики в классе -->
+            <div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            Ученики в классе
+                            <span style="background: rgba(124, 58, 237, 0.1); color: var(--primary); padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem;">
+                                {{ students_in_group|length }}
+                            </span>
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        {% if students_in_group %}
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            {% for student in students_in_group %}
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: var(--hover); border-radius: 8px;">
+                                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                    <div style="width: 40px; height: 40px; border-radius: 8px; background: var(--success); color: white; display: flex; align-items: center; justify-content: center;">
+                                        <i class="bi bi-person"></i>
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 500;">
+                                            {{ student.user.last_name }} {{ student.user.first_name }}
+                                            {% if student.patronymic %} {{ student.patronymic }}{% endif %}
+                                        </div>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                            {{ student.user.username }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-danger" 
+                                        onclick="showRemoveStudentModal('{{ student.user.id }}', '{{ student.user.get_full_name }}')">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div style="text-align: center; padding: 2rem;">
+                            <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--hover); color: var(--text-secondary); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; margin: 0 auto 1rem;">
+                                <i class="bi bi-people"></i>
+                            </div>
+                            <p style="color: var(--text-secondary);">В классе пока нет учеников</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Добавление учеников -->
+            <div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Добавить учеников</h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Ученики без класса -->
+                        <div style="margin-bottom: 1.5rem;">
+                            <h4 style="font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.75rem;">
+                                Ученики без класса
+                            </h4>
+                            
+                            {% if students_without_group %}
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                {% for student in students_without_group %}
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(5, 150, 105, 0.1); border-radius: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                        <div style="width: 40px; height: 40px; border-radius: 8px; background: var(--success); color: white; display: flex; align-items: center; justify-content: center;">
+                                            <i class="bi bi-person-plus"></i>
+                                        </div>
+                                        <div>
+                                            <div style="font-weight: 500;">
+                                                {{ student.user.last_name }} {{ student.user.first_name }}
+                                                {% if student.patronymic %} {{ student.patronymic }}{% endif %}
+                                            </div>
+                                            <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                                {{ student.user.email|default:student.user.username }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <form method="post" action="{% url 'group_students' group.id %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="student_id" value="{{ student.user.id }}">
+                                        <input type="hidden" name="action" value="add">
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            <i class="bi bi-plus-lg"></i> Добавить
+                                        </button>
+                                    </form>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <p style="color: var(--text-secondary); font-size: 0.875rem;">Нет учеников без класса</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Пользователи без профиля -->
+                        {% if users_without_profile %}
+                        <div>
+                            <h4 style="font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.75rem;">
+                                Пользователи без профиля
+                            </h4>
+                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                                {% for user in users_without_profile %}
+                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(217, 119, 6, 0.1); border-radius: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                        <div style="width: 40px; height: 40px; border-radius: 8px; background: var(--warning); color: white; display: flex; align-items: center; justify-content: center;">
+                                            <i class="bi bi-person-exclamation"></i>
+                                        </div>
+                                        <div>
+                                            <div style="font-weight: 500;">
+                                                {{ user.last_name }} {{ user.first_name }}
+                                            </div>
+                                            <div style="font-size: 0.75rem; color: var(--warning);">
+                                                {{ user.username }}
+                                                <span style="font-size: 0.7rem; background: rgba(217, 119, 6, 0.2); color: var(--warning); padding: 0.125rem 0.375rem; border-radius: 4px; margin-left: 0.25rem;">
+                                                    Нет профиля
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <form method="post" action="{% url 'group_students' group.id %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="student_id" value="{{ user.id }}">
+                                        <input type="hidden" name="action" value="add">
+                                        <button type="submit" class="btn btn-sm btn-warning">
+                                            <i class="bi bi-plus-lg"></i> Создать и добавить
+                                        </button>
+                                    </form>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Модальное окно удаления ученика -->
+<div class="modal" id="removeStudentModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">
+                <i class="bi bi-exclamation-triangle" style="color: var(--danger);"></i>
+                Удаление ученика
+            </h3>
+            <button type="button" class="modal-close" onclick="closeRemoveStudentModal()">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div style="text-align: center; margin-bottom: 1rem;">
+                <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(220, 38, 38, 0.1); color: var(--danger); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 1rem;">
+                    <i class="bi bi-person-dash"></i>
+                </div>
+                <h4 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Удалить ученика?</h4>
+                <p id="removeStudentText" style="color: var(--text);">
+                    <!-- Текст будет заполнен JavaScript -->
+                </p>
+                
+                <div style="background: rgba(217, 119, 6, 0.1); border-radius: 8px; padding: 1rem; margin-top: 1.5rem; text-align: left;">
+                    <h5 style="font-weight: 500; color: var(--warning); margin-bottom: 0.5rem;">
+                        <i class="bi bi-exclamation-circle"></i> Внимание
+                    </h5>
+                    <ul style="font-size: 0.875rem; color: var(--warning); list-style: none; padding: 0; margin: 0;">
+                        <li style="margin-bottom: 0.25rem;">• Ученик будет перемещен в категорию "без класса"</li>
+                        <li style="margin-bottom: 0.25rem;">• Его оценки и домашние задания сохранятся</li>
+                        <li>• Действие можно отменить, добавив ученика обратно</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <form method="post" id="removeStudentForm" style="display: none;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="remove">
+            </form>
+            <button type="button" class="btn btn-outline" onclick="closeRemoveStudentModal()">
+                <i class="bi bi-x-circle"></i> Отмена
+            </button>
+            <button type="button" class="btn btn-danger" onclick="submitRemoveStudent()">
+                <i class="bi bi-person-dash"></i> Удалить
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentStudentId = null;
+
+function showRemoveStudentModal(studentId, studentName) {
+    currentStudentId = studentId;
+    
+    const modal = document.getElementById('removeStudentModal');
+    const modalText = document.getElementById('removeStudentText');
+    
+    modalText.innerHTML = `Вы собираетесь удалить ученика <strong>"${studentName}"</strong> из класса.`;
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeRemoveStudentModal() {
+    const modal = document.getElementById('removeStudentModal');
+    modal.classList.remove('show');
+    document.body.style.overflow = '';
+    currentStudentId = null;
+}
+
+function submitRemoveStudent() {
+    if (currentStudentId) {
+        const form = document.getElementById('removeStudentForm');
+        form.action = "{% url 'group_students' group.id %}";
+        form.method = 'post';
+        
+        // Добавляем hidden input с ID студента
+        const studentIdInput = document.createElement('input');
+        studentIdInput.type = 'hidden';
+        studentIdInput.name = 'student_id';
+        studentIdInput.value = currentStudentId;
+        form.appendChild(studentIdInput);
+        
+        form.submit();
+    }
+}
+
+// Закрытие модального окна при клике вне его
+document.getElementById('removeStudentModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeRemoveStudentModal();
+    }
+});
+
+// Закрытие модального окна при нажатии Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeRemoveStudentModal();
+    }
+});
+</script>
+
+<style>
+    @media (max-width: 1024px) {
+        .admin-container main .card-body > div[style*="grid-template-columns"] {
+            grid-template-columns: 1fr !important;
+        }
+    }
+    
+    .btn-warning {
+        background: var(--warning);
+        color: white;
+        border: 1px solid var(--warning);
+    }
+    
+    .btn-warning:hover {
+        background: #b45309;
+        border-color: #b45309;
+    }
+</style>
+{% endblock %}

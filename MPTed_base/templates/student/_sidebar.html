@@ -1,0 +1,65 @@
+<aside class="sidebar">
+    <div class="sidebar-section">
+        <div class="sidebar-user mb-4">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div>
+                    <h4 class="mb-0">{{ student_profile.get_full_name|default:user.get_full_name }}</h4>
+                    <p class="text-muted mb-0">{{ student_profile.student_group.name|default:"Без класса" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <h6 class="sidebar-title">Навигация</h6>
+        <ul class="sidebar-menu">
+            <li class="sidebar-item">
+                <a href="{% url 'student_dashboard' %}" class="sidebar-link {% if request.resolver_match.url_name == 'student_dashboard' %}active{% endif %}">
+                    <i class="bi bi-house-door"></i>
+                    <span>Главная</span>
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="{% url 'student_schedule' %}" class="sidebar-link {% if request.resolver_match.url_name == 'student_schedule' %}active{% endif %}">
+                    <i class="bi bi-calendar-week"></i>
+                    <span>Расписание</span>
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="{% url 'student_grades' %}" class="sidebar-link {% if request.resolver_match.url_name == 'student_grades' %}active{% endif %}">
+                    <i class="bi bi-journal-check"></i>
+                    <span>Оценки</span>
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="{% url 'student_homework' %}" class="sidebar-link {% if request.resolver_match.url_name == 'student_homework' %}active{% endif %}">
+                    <i class="bi bi-journal-text"></i>
+                    <span>Домашние задания</span>
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="{% url 'attendance_student:student_attendance' %}" 
+                class="sidebar-link {% if 'attendance' in request.resolver_match.app_names %}active{% endif %}">
+                    <i class="bi bi-calendar-check"></i>
+                    <span>Посещаемость</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="sidebar-section">
+        <h6 class="sidebar-title">Быстрые ссылки</h6>
+        <ul class="sidebar-menu">
+            <li class="sidebar-item">
+                <a href="{% url 'student_profile' %}" class="sidebar-link">
+                    <i class="bi bi-person-circle"></i>
+                    <span>Мой профиль</span>
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="{% url 'logout_view' %}" class="sidebar-link text-danger">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Выйти</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</aside>

@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Удаление класса - Админ панель{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "includes/sidebar.html" %}
+    
+    <main class="main-content">
+        <div class="content-header">
+            <h1 class="content-title">Удаление класса</h1>
+            <a href="{% url 'groups_list' %}" class="btn btn-outline">
+                <i class="bi bi-arrow-left"></i> Назад
+            </a>
+        </div>
+
+        <div class="max-w-2xl mx-auto">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="card-title mb-0">
+                        <i class="bi bi-exclamation-triangle"></i> Подтверждение удаления
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-6">
+                        <div class="w-16 h-16 rounded-full bg-danger/10 text-danger flex items-center justify-center text-2xl mx-auto mb-4">
+                            <i class="bi bi-trash"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold mb-2">Вы уверены?</h3>
+                        <p class="text-muted mb-4">
+                            Вы собираетесь удалить класс <strong>"{{ group.name }}"</strong>.
+                            {% if student_count > 0 %}
+                            <br>В классе {{ student_count }} ученик(ов).
+                            {% endif %}
+                        </p>
+                        
+                        <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 mb-6">
+                            <h4 class="font-medium text-yellow-700 dark:text-yellow-300 mb-2">
+                                <i class="bi bi-exclamation-circle"></i> Внимание
+                            </h4>
+                            <ul class="text-sm text-yellow-600 dark:text-yellow-400 space-y-1 text-left">
+                                <li>• Удаление класса не удаляет учеников из системы</li>
+                                <li>• Ученики будут перемещены в категорию "без класса"</li>
+                                <li>• Действие нельзя отменить</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-2 justify-center">
+                        <form method="post" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash"></i> Да, удалить класс
+                            </button>
+                        </form>
+                        <a href="{% url 'group_edit' group.id %}" class="btn btn-outline">
+                            <i class="bi bi-x-circle"></i> Отмена
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+    .max-w-2xl { max-width: 42rem; }
+    .mx-auto { margin-left: auto; margin-right: auto; }
+    
+    .text-xl { font-size: 1.25rem; }
+    .text-2xl { font-size: 1.5rem; }
+    
+    .font-semibold { font-weight: 600; }
+    
+    .text-left { text-align: left; }
+    
+    .justify-center { justify-content: center; }
+    
+    .text-yellow-700 { color: #b45309; }
+    .dark\:text-yellow-300 { color: #fcd34d; }
+    
+    .text-yellow-600 { color: #d97706; }
+    .dark\:text-yellow-400 { color: #fbbf24; }
+</style>
+{% endblock %}

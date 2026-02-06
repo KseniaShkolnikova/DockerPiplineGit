@@ -1,0 +1,147 @@
+<!-- teacher_portal/templates/teacher_portal/schedule.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Расписание - MPTed{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "teacher_portal/_sidebar.html" %}
+
+    <main class="main-content">
+        <!-- Шапка -->
+        <div class="content-header mb-4">
+            <div class="header-left">
+                <h1 class="content-title">Моё расписание</h1>
+                <p class="content-subtitle">Уроки на текущую неделю</p>
+            </div>
+            <div class="header-actions">
+                <select id="group-filter" class="filter-select" onchange="filterByGroup(this.value)">
+                    <option value="">Все классы</option>
+                    {% for group in groups %}
+                    <option value="{{ group.id }}" {% if selected_group == group.id|stringformat:"i" %}selected{% endif %}>
+                        {{ group.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Дни недели -->
+        <div class="grid grid-cols-1 md:grid-cols-7 gap-4">
+            {% for day_name, day_data in schedule_by_day.items %}
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">{{ day_name }}</h3>
+                </div>
+                <div class="card-body">
+                    {% if day_data.lessons %}
+                        <div class="space-y-3">
+                            {% for lesson in day_data.lessons %}
+                            <div class="p-3 border rounded">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <div class="font-semibold text-primary">
+                                            {{ lesson.lesson_number }} урок
+                                        </div>
+                                        <small class="text-muted">
+                                            {% with hour=lesson.lesson_number|add:7 %}
+                                                {{ hour }}:00 - {{ hour }}:45
+                                            {% endwith %}
+                                        </small>
+                                    </div>
+                                    <span class="badge bg-secondary">{{ lesson.daily_schedule.student_group.name }}</span>
+                                </div>
+                                <div class="font-semibold mb-1">{{ lesson.subject.name }}</div>
+                                <div class="text-sm text-muted">
+                                    Кабинет: {{ lesson.classroom|default:"-" }}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-calendar-x" style="font-size: 2rem; opacity: 0.3;"></i>
+                            <p class="mt-2">Нет уроков</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-7">
+                <div class="empty-state">
+                    <i class="bi bi-calendar-x"></i>
+                    <h3>Расписание не найдено</h3>
+                    <p>На текущей неделе у вас нет уроков</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Статистика -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h3 class="card-title mb-0">Статистика недели</h3>
+            </div>
+            <div class="card-body">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-primary">
+                            {{ total_lessons }}
+                        </div>
+                        <div class="text-sm text-muted">Всего уроков</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-success">
+                            {{ unique_groups }}
+                        </div>
+                        <div class="text-sm text-muted">Классов</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-info">
+                            {{ unique_subjects }}
+                        </div>
+                        <div class="text-sm text-muted">Предметов</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-warning">
+                            {{ average_lessons_per_day|floatformat:1 }}
+                        </div>
+                        <div class="text-sm text-muted">Уроков в день</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+function filterByGroup(groupId) {
+    if (groupId) {
+        window.location.href = `{% url 'teacher_portal:schedule' %}?group=${groupId}`;
+    } else {
+        window.location.href = '{% url "teacher_portal:schedule" %}';
+    }
+}
+
+// Подсветка сегодняшнего дня
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    const dayIndex = today.getDay(); // 0 = воскресенье, 1 = понедельник
+    
+    // Преобразуем индекс дня недели (0-6) в название дня (Понедельник-Воскресенье)
+    const dayNames = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+    const todayName = dayNames[dayIndex];
+    
+    // Находим карточку сегодняшнего дня и добавляем класс
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(card => {
+        const header = card.querySelector('.card-header h3');
+        if (header && header.textContent.trim() === todayName) {
+            card.style.border = '2px solid var(--primary)';
+            card.style.boxShadow = '0 4px 12px rgba(124, 58, 237, 0.1)';
+        }
+    });
+});
+</script>
+{% endblock %}

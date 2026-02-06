@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Управление учениками - Админ панель{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "includes/sidebar.html" %}
+    
+    <main class="main-content">
+        <div class="content-header">
+            <div class="header-left">
+                <h1 class="content-title">Управление учениками</h1>
+                <p class="content-subtitle">Просмотр, добавление и управление учениками</p>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'students_list' %}" class="btn btn-primary">
+                    <i class="bi bi-list"></i> Все ученики
+                </a>
+                <a href="{% url 'student_create' %}" class="btn btn-success">
+                    <i class="bi bi-plus-circle"></i> Добавить ученика
+                </a>
+            </div>
+        </div>
+
+        <!-- Фильтры и поиск -->
+        <div class="filter-card">
+            <form method="get" class="filter-form">
+                <div class="filter-row">
+                    <div class="search-box">
+                        <i class="bi bi-search"></i>
+                        <input type="text" 
+                               name="search" 
+                               class="search-input" 
+                               placeholder="Поиск по имени, фамилии, телефону..." 
+                               value="{{ search_query }}">
+                    </div>
+                    
+                    <select name="group" class="filter-select" onchange="this.form.submit()">
+                        <option value="">Все классы</option>
+                        <option value="no_group" {% if group_filter == 'no_group' %}selected{% endif %}>Без класса</option>
+                        {% for group in all_groups %}
+                        <option value="{{ group.id }}" {% if group_filter == group.id|stringformat:"s" %}selected{% endif %}>
+                            {{ group.name }} ({{ group.year }} курс)
+                        </option>
+                        {% endfor %}
+                    </select>
+                    
+                    <select name="course" class="filter-select" onchange="this.form.submit()">
+                        <option value="">Все курсы</option>
+                        <option value="1" {% if course_filter == '1' %}selected{% endif %}>1 курс</option>
+                        <option value="2" {% if course_filter == '2' %}selected{% endif %}>2 курс</option>
+                        <option value="3" {% if course_filter == '3' %}selected{% endif %}>3 курс</option>
+                        <option value="4" {% if course_filter == '4' %}selected{% endif %}>4 курс</option>
+                    </select>
+                    
+                    <select name="status" class="filter-select" onchange="this.form.submit()">
+                        <option value="">Все статусы</option>
+                        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Активные</option>
+                        <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Заблокированы</option>
+                    </select>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-funnel"></i> Применить
+                    </button>
+                    {% if search_query or group_filter or course_filter or status_filter %}
+                    <a href="{% url 'students_list' %}" class="btn btn-outline">
+                        <i class="bi bi-x-circle"></i> Сбросить
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+
+        <!-- Статистика -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon users">
+                        <i class="bi bi-people"></i>
+                    </div>
+                    <span class="badge {% if active_count > 0 %}success{% else %}danger{% endif %}">
+                        <i class="bi bi-check-circle"></i> {{ active_count }} активных
+                    </span>
+                </div>
+                <div class="stat-value">{{ total_count }}</div>
+                <div class="stat-label">Всего учеников</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon groups">
+                        <i class="bi bi-collection"></i>
+                    </div>
+                    <span class="badge info">
+                        <i class="bi bi-diagram-3"></i> {{ all_groups|length }} классов
+                    </span>
+                </div>
+                <div class="stat-value">{{ students.paginator.count }}</div>
+                <div class="stat-label">Найдено по фильтрам</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon subjects">
+                        <i class="bi bi-shield-lock"></i>
+                    </div>
+                    <span class="badge warning">
+                        <i class="bi bi-exclamation-triangle"></i> {{ inactive_count }} заблокировано
+                    </span>
+                </div>
+                <div class="stat-value">{{ all_groups|length }}</div>
+                <div class="stat-label">Всего классов</div>
+            </div>
+        </div>
+
+        <!-- Таблица учеников -->
+        <div class="table-container">
+            <div class="table-header">
+                <h3 class="table-title">Список учеников</h3>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-muted">Найдено: {{ students.paginator.count }}</span>
+                </div>
+            </div>
+            
+            {% if students %}
+            <div class="overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px; text-align: center;">№</th>
+                            <th style="min-width: 200px;">Ученик</th>
+                            <th style="width: 100px;">Курс</th>
+                            <th style="min-width: 150px;">Класс</th>
+                            <th style="width: 120px;">Телефон</th>
+                            <th style="width: 100px;">Статус</th>
+                            <th style="width: 180px; text-align: center;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td style="text-align: center;">{{ forloop.counter0|add:students.start_index }}</td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div class="user-avatar student" style="background: var(--success);">
+                                        {{ student.user.first_name|slice:":1" }}{{ student.user.last_name|slice:":1" }}
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 600; color: var(--text);">
+                                            {{ student.user.last_name }} {{ student.user.first_name }} {{ student.patronymic }}
+                                        </div>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                            @{{ student.user.username }}
+                                            {% if student.user.email %}
+                                            • {{ student.user.email }}
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ student.course }} курс</td>
+                            <td>
+                                {% if student.student_group %}
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div style="width: 32px; height: 32px; border-radius: 6px; background: var(--info); color: white; display: flex; align-items: center; justify-content: center;">
+                                        <i class="bi bi-collection"></i>
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 500;">{{ student.student_group.name }}</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                            {{ student.student_group.year }} курс
+                                        </div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <span style="color: var(--text-secondary);">Не назначен</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if student.phone %}
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <i class="bi bi-telephone" style="color: var(--text-secondary); font-size: 0.875rem;"></i>
+                                    <span style="font-size: 0.875rem;">{{ student.phone }}</span>
+                                </div>
+                                {% else %}
+                                <span style="color: var(--text-secondary); font-size: 0.875rem;">Не указан</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if student.user.is_active %}
+                                <span class="badge success">
+                                    <i class="bi bi-check-circle"></i> Активен
+                                </span>
+                                {% else %}
+                                <span class="badge danger">
+                                    <i class="bi bi-x-circle"></i> Заблокирован
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center;">
+                                <div class="action-buttons">
+                                    <a href="{% url 'student_detail' student.user.id %}" class="btn-icon" title="Подробнее">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'student_edit' student.user.id %}" class="btn-icon" title="Редактировать">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form method="post" action="{% url 'student_toggle_active' student.user.id %}" class="inline-form">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="toggle">
+                                        {% if student.user.is_active %}
+                                        <button type="submit" class="btn-icon danger" title="Заблокировать" onclick="return confirm('Заблокировать аккаунт ученика?')">
+                                            <i class="bi bi-lock"></i>
+                                        </button>
+                                        {% else %}
+                                        <button type="submit" class="btn-icon success" title="Разблокировать" onclick="return confirm('Активировать аккаунт ученика?')">
+                                            <i class="bi bi-unlock"></i>
+                                        </button>
+                                        {% endif %}
+                                    </form>
+                                    <form method="post" action="{% url 'student_delete' student.user.id %}" class="inline-form">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn-icon danger" title="Удалить" onclick="return confirm('Удалить ученика? Это действие нельзя отменить.')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Пагинация -->
+            {% if students.paginator.num_pages > 1 %}
+            <div class="pagination">
+                {% if students.has_previous %}
+                <a href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if group_filter %}&group={{ group_filter }}{% endif %}{% if course_filter %}&course={{ course_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
+                   class="pagination-item">
+                    <i class="bi bi-chevron-double-left"></i>
+                </a>
+                <a href="?page={{ students.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if group_filter %}&group={{ group_filter }}{% endif %}{% if course_filter %}&course={{ course_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
+                   class="pagination-item">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+                {% endif %}
+                
+                {% for num in students.paginator.page_range %}
+                    {% if students.number == num %}
+                    <span class="pagination-item active">{{ num }}</span>
+                    {% elif num > students.number|add:'-3' and num < students.number|add:'3' %}
+                    <a href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if group_filter %}&group={{ group_filter }}{% endif %}{% if course_filter %}&course={{ course_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
+                       class="pagination-item">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if students.has_next %}
+                <a href="?page={{ students.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if group_filter %}&group={{ group_filter }}{% endif %}{% if course_filter %}&course={{ course_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
+                   class="pagination-item">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+                <a href="?page={{ students.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if group_filter %}&group={{ group_filter }}{% endif %}{% if course_filter %}&course={{ course_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
+                   class="pagination-item">
+                    <i class="bi bi-chevron-double-right"></i>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            {% else %}
+            <div class="empty-state">
+                <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--hover); color: var(--text-secondary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 1rem;">
+                    <i class="bi bi-person-slash"></i>
+                </div>
+                <h4 style="font-size: 1.125rem; font-weight: 500; margin-bottom: 0.5rem;">Ученики не найдены</h4>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                    {% if search_query or group_filter or course_filter or status_filter %}
+                    Попробуйте изменить параметры поиска или <a href="{% url 'students_list' %}" style="color: var(--primary);">сбросить фильтры</a>
+                    {% else %}
+                    В системе еще нет учеников. Добавьте первого ученика.
+                    {% endif %}
+                </p>
+                <a href="{% url 'student_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Добавить ученика
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+</div>
+{% endblock %}

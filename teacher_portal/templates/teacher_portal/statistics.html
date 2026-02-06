@@ -1,0 +1,644 @@
+<!-- teacher_portal/templates/teacher_portal/statistics.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Статистика - MPTed{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+        transition: all 0.2s;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-bottom: 1rem;
+    }
+    
+    .progress-lg {
+        height: 1rem;
+        border-radius: 10px;
+    }
+    
+    .subject-badge {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin-right: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "teacher_portal/_sidebar.html" %}
+
+    <main class="main-content">
+        <!-- Шапка -->
+        <div class="content-header mb-4">
+            <div>
+                <h1 class="content-title">Статистика</h1>
+                <p class="content-subtitle">
+                    Период: {{ period.start|date:"d.m.Y" }} – {{ period.end|date:"d.m.Y" }}
+                    (последние 30 дней)
+                </p>
+            </div>
+            <div class="header-actions">
+                <select id="period-select" class="filter-select" onchange="changePeriod(this.value)">
+                    <option value="30" selected>30 дней</option>
+                    <option value="7">7 дней</option>
+                    <option value="90">90 дней</option>
+                    <option value="365">Год</option>
+                </select>
+                <button class="btn btn-outline" onclick="exportStatistics()">
+                    <i class="bi bi-download"></i>
+                    Экспорт
+                </button>
+            </div>
+        </div>
+
+        <!-- Общая статистика -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <div class="stat-card text-center">
+                <div class="text-3xl font-bold text-primary">
+                    {{ homework_stats.total|default:"0" }}
+                </div>
+                <div class="text-sm text-muted">Домашних заданий</div>
+                <div class="mt-2 text-xs">
+                    {{ homework_stats.with_submissions|default:"0" }} с работами
+                </div>
+            </div>
+            
+            <!-- В разделе "Общая статистика" замените второй блок: -->
+            <div class="stat-card text-center">
+                <div class="text-3xl font-bold text-success">
+                    {{ total_grades|default:"0" }}
+                </div>
+                <div class="text-sm text-muted">Выставленных оценок</div>
+                <div class="mt-2">
+                    <span class="badge bg-info">{{ homework_stats.graded|default:"0" }} за ДЗ</span>
+                </div>
+            </div>
+
+            <!-- Третий блок: -->
+            <div class="stat-card text-center">
+                <div class="text-3xl font-bold text-info">{{ avg_attendance|default:"0" }}%</div>
+                <div class="text-sm text-muted">Средняя посещаемость</div>
+                <div class="mt-2 text-xs">
+                    {{ total_attendance.total|default:"0" }} уроков
+                </div>
+            </div>
+            
+            <div class="stat-card text-center">
+                <div class="text-3xl font-bold text-warning">
+                    {{ teacher_info.all_groups|length }}
+                </div>
+                <div class="text-sm text-muted">Классов</div>
+                <div class="mt-2 text-xs">
+                    {{ teacher_info.subjects|length }} предметов
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Статистика по предметам -->
+            <div class="col-lg-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-book me-2"></i>Статистика по предметам</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if grade_stats_by_subject %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Предмет</th>
+                                        <th>Оценки</th>
+                                        <th>Средний балл</th>
+                                        <th>Распределение</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for subject_data in grade_stats_by_subject %}
+                                    <tr>
+                                        <td>
+                                            <div class="font-semibold">{{ subject_data.subject.name }}</div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ subject_data.stats.total|default:"0" }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="font-semibold 
+                                                {% if subject_data.stats.average >= 4.5 %}text-success
+                                                {% elif subject_data.stats.average >= 3.5 %}text-info
+                                                {% elif subject_data.stats.average >= 2.5 %}text-warning
+                                                {% else %}text-danger{% endif %}">
+                                                {{ subject_data.stats.average|floatformat:1|default:"-" }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div style="width: 150px;">
+                                                    <div class="progress progress-lg">
+                                                        {% if subject_data.stats.total > 0 %}
+                                                        <div class="progress-bar bg-success" 
+                                                             style="width: {% widthratio subject_data.stats.excellent subject_data.stats.total 100 %}%"
+                                                             title="Отлично: {{ subject_data.stats.excellent }}">
+                                                        </div>
+                                                        <div class="progress-bar bg-info" 
+                                                             style="width: {% widthratio subject_data.stats.good subject_data.stats.total 100 %}%"
+                                                             title="Хорошо: {{ subject_data.stats.good }}">
+                                                        </div>
+                                                        <div class="progress-bar bg-warning" 
+                                                             style="width: {% widthratio subject_data.stats.satisfactory subject_data.stats.total 100 %}%"
+                                                             title="Удовлетворительно: {{ subject_data.stats.satisfactory }}">
+                                                        </div>
+                                                        <div class="progress-bar bg-danger" 
+                                                             style="width: {% widthratio subject_data.stats.poor subject_data.stats.total 100 %}%"
+                                                             title="Неудовлетворительно: {{ subject_data.stats.poor }}">
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="ms-2 text-xs">
+                                                    {{ subject_data.stats.excellent|default:"0" }}/{{ subject_data.stats.good|default:"0" }}/{{ subject_data.stats.satisfactory|default:"0" }}
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-journal-x text-muted" style="font-size: 3rem;"></i>
+                            <p class="mt-2">Нет данных по оценкам за выбранный период</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Еженедельная активность -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Еженедельная активность</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if weekly_activity %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Неделя</th>
+                                        <th>Оценки</th>
+                                        <th>Посещаемость</th>
+                                        <th>ДЗ</th>
+                                        <th>Активность</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for week in weekly_activity %}
+                                    <tr>
+                                        <td>{{ week.week }}</td>
+                                        <td>
+                                            <span class="badge 
+                                                {% if week.grades > 10 %}bg-success
+                                                {% elif week.grades > 5 %}bg-info
+                                                {% elif week.grades > 0 %}bg-warning
+                                                {% else %}bg-secondary{% endif %}">
+                                                {{ week.grades }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge 
+                                                {% if week.attendance > 50 %}bg-success
+                                                {% elif week.attendance > 20 %}bg-info
+                                                {% elif week.attendance > 0 %}bg-warning
+                                                {% else %}bg-secondary{% endif %}">
+                                                {{ week.attendance }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge 
+                                                {% if week.homework > 5 %}bg-success
+                                                {% elif week.homework > 2 %}bg-info
+                                                {% elif week.homework > 0 %}bg-warning
+                                                {% else %}bg-secondary{% endif %}">
+                                                {{ week.homework }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% with total=week.grades|add:week.attendance|add:week.homework %}
+                                            <div class="progress" style="height: 8px;">
+                                                <div class="progress-bar bg-primary" 
+                                                     style="width: {% if total > 100 %}100{% else %}{{ total }}{% endif %}%">
+                                                </div>
+                                            </div>
+                                            {% endwith %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-calendar-x text-muted" style="font-size: 3rem;"></i>
+                            <p class="mt-2">Нет данных о недельной активности</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Посещаемость по классам -->
+            <div class="col-lg-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-people me-2"></i>Посещаемость по классам</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if attendance_stats_by_group %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Класс</th>
+                                        <th>Уроков</th>
+                                        <th>Присутствовало</th>
+                                        <th>Отсутствовало</th>
+                                        <th>Опоздало</th>
+                                        <th>Посещаемость</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for group_data in attendance_stats_by_group %}
+                                    <tr>
+                                        <td>
+                                            <div class="font-semibold">{{ group_data.group.name }}</div>
+                                            <div class="text-xs text-muted">{{ group_data.group.year }} год</div>
+                                        </td>
+                                        <td>{{ group_data.stats.total|default:"0" }}</td>
+                                        <td>
+                                            <span class="badge bg-success">{{ group_data.stats.present|default:"0" }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-danger">{{ group_data.stats.absent|default:"0" }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-warning">{{ group_data.stats.late|default:"0" }}</span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div style="width: 100px;">
+                                                    <div class="progress progress-lg">
+                                                        <div class="progress-bar 
+                                                            {% if group_data.stats.present_percentage >= 90 %}bg-success
+                                                            {% elif group_data.stats.present_percentage >= 70 %}bg-info
+                                                            {% elif group_data.stats.present_percentage >= 50 %}bg-warning
+                                                            {% else %}bg-danger{% endif %}"
+                                                             style="width: {{ group_data.stats.present_percentage|default:"0" }}%">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="ms-2 font-semibold">
+                                                    {{ group_data.stats.present_percentage|default:"0" }}%
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-people-x text-muted" style="font-size: 3rem;"></i>
+                            <p class="mt-2">Нет данных по посещаемости</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Статистика домашних заданий -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-journal-text me-2"></i>Домашние задания</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="stat-card text-center h-100">
+                                    <div class="text-4xl font-bold text-primary mb-2">
+                                        {% if homework_stats.total and homework_stats.with_submissions %}
+                                            {% widthratio homework_stats.with_submissions homework_stats.total 100 as completion_rate %}
+                                            {{ completion_rate|floatformat:0 }}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-sm text-muted">Процент сдачи</div>
+                                    <div class="mt-3">
+                                        <div class="progress progress-lg">
+                                            <div class="progress-bar bg-primary" 
+                                                 style="width: {% if homework_stats.total and homework_stats.with_submissions %}{% widthratio homework_stats.with_submissions homework_stats.total 100 %}%{% else %}0%{% endif %}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="stat-card text-center h-100">
+                                    <div class="text-4xl font-bold text-success mb-2">
+                                        {% if homework_stats.total and homework_stats.graded %}
+                                            {% widthratio homework_stats.graded homework_stats.total 100 as graded_rate %}
+                                            {{ graded_rate|floatformat:0 }}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-sm text-muted">Проверенных работ</div>
+                                    <div class="mt-3">
+                                        <div class="progress progress-lg">
+                                            <div class="progress-bar bg-success" 
+                                                 style="width: {% if homework_stats.total and homework_stats.graded %}{% widthratio homework_stats.graded homework_stats.total 100 %}%{% else %}0%{% endif %}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h6 class="mb-3">Сводка</h6>
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="text-center p-3 border rounded">
+                                        <div class="text-2xl font-bold text-info">{{ homework_stats.total|default:"0" }}</div>
+                                        <div class="text-xs text-muted">Всего заданий</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-center p-3 border rounded">
+                                        <div class="text-2xl font-bold text-warning">{{ homework_stats.with_submissions|default:"0" }}</div>
+                                        <div class="text-xs text-muted">С работами</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Легенда -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Легенда</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-6">
+                                <h6 class="mb-2">Оценки</h6>
+                                <div class="d-flex flex-wrap gap-2 mb-3">
+                                    <div class="legend-item">
+                                        <span class="subject-badge bg-success"></span>
+                                        <span class="text-xs">5 (отлично)</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <span class="subject-badge bg-info"></span>
+                                        <span class="text-xs">4 (хорошо)</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <span class="subject-badge bg-warning"></span>
+                                        <span class="text-xs">3 (удовл.)</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <span class="subject-badge bg-danger"></span>
+                                        <span class="text-xs">2 (неудовл.)</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <h6 class="mb-2">Посещаемость</h6>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <div class="legend-item">
+                                        <span class="subject-badge bg-success"></span>
+                                        <span class="text-xs">≥90% (отличная)</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <span class="subject-badge bg-info"></span>
+                                        <span class="text-xs">70-89% (хорошая)</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <span class="subject-badge bg-warning"></span>
+                                        <span class="text-xs">50-69% (удовл.)</span>
+                                    </div>
+                                    <div class="legend-item">
+                                        <span class="subject-badge bg-danger"></span>
+                                        <span class="text-xs">≤49% (низкая)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Экспорт и печать -->
+        <div class="card mt-4">
+            <div class="card-body text-center">
+                <h5 class="mb-3">Экспорт статистики</h5>
+                <div class="d-flex justify-content-center gap-3">
+                    <button class="btn btn-outline-primary" onclick="exportPDF()">
+                        <i class="bi bi-file-earmark-pdf"></i>
+                        PDF отчет
+                    </button>
+                    <button class="btn btn-outline-success" onclick="exportExcel()">
+                        <i class="bi bi-file-earmark-excel"></i>
+                        Excel отчет
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="window.print()">
+                        <i class="bi bi-printer"></i>
+                        Печать
+                    </button>
+                </div>
+                <p class="text-muted mt-3 mb-0">
+                    <small>Отчет содержит данные за период {{ period.start|date:"d.m.Y" }} – {{ period.end|date:"d.m.Y" }}</small>
+                </p>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Load Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+function changePeriod(days) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('days', days);
+    window.location.href = url.toString();
+}
+
+function exportStatistics() {
+    // Здесь будет логика экспорта статистики
+    alert('Функция экспорта находится в разработке.');
+}
+
+function exportPDF() {
+    alert('Функция экспорта в PDF находится в разработке.');
+}
+
+function exportExcel() {
+    alert('Функция экспорта в Excel находится в разработке.');
+}
+
+// Инициализация графиков
+document.addEventListener('DOMContentLoaded', function() {
+    // График распределения оценок
+    const gradeData = {
+        labels: ['Отлично', 'Хорошо', 'Удовлетворительно', 'Неудовлетворительно'],
+        datasets: [{
+            data: [
+                {{ grade_stats_by_subject.0.stats.excellent|default:0 }},
+                {{ grade_stats_by_subject.0.stats.good|default:0 }},
+                {{ grade_stats_by_subject.0.stats.satisfactory|default:0 }},
+                {{ grade_stats_by_subject.0.stats.poor|default:0 }}
+            ],
+            backgroundColor: [
+                '#28a745',
+                '#17a2b8',
+                '#ffc107',
+                '#dc3545'
+            ]
+        }]
+    };
+
+    // График активности по неделям
+    const activityData = {
+        labels: [
+            {% for week in weekly_activity reversed %}
+                '{{ week.week }}'{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ],
+        datasets: [
+            {
+                label: 'Оценки',
+                data: [
+                    {% for week in weekly_activity reversed %}
+                        {{ week.grades }}{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ],
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                fill: true
+            },
+            {
+                label: 'Посещаемость',
+                data: [
+                    {% for week in weekly_activity reversed %}
+                        {{ week.attendance }}{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ],
+                borderColor: '#28a745',
+                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                fill: true
+            },
+            {
+                label: 'Домашние задания',
+                data: [
+                    {% for week in weekly_activity reversed %}
+                        {{ week.homework }}{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ],
+                borderColor: '#ffc107',
+                backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                fill: true
+            }
+        ]
+    };
+
+    // Создаем графики при наличии данных
+    {% if grade_stats_by_subject and grade_stats_by_subject.0.stats.total %}
+    createGradeChart(gradeData);
+    {% endif %}
+
+    {% if weekly_activity %}
+    createActivityChart(activityData);
+    {% endif %}
+});
+
+function createGradeChart(data) {
+    const ctx = document.createElement('canvas');
+    ctx.id = 'gradeChart';
+    ctx.style.width = '100%';
+    ctx.style.height = '300px';
+    
+    const container = document.querySelector('.card-body');
+    if (container) {
+        container.appendChild(ctx);
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: data,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+}
+
+function createActivityChart(data) {
+    const ctx = document.createElement('canvas');
+    ctx.id = 'activityChart';
+    ctx.style.width = '100%';
+    ctx.style.height = '300px';
+    
+    const container = document.querySelector('.card-body');
+    if (container) {
+        container.appendChild(ctx);
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: data,
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

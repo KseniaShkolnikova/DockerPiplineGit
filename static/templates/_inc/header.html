@@ -1,0 +1,468 @@
+<!-- Навигационная панель -->
+<nav class="admin-navbar">
+    <div class="nav-left">
+        {% if request.user.is_superuser or request.user.groups.all.0.name == 'admin' %}
+            <!-- АДМИН ПАНЕЛЬ -->
+            <a href="/admin-dashboard/" class="logo">
+                <i class="bi bi-speedometer2"></i>
+                Админ панель
+            </a>
+            
+            <div class="nav-menu">
+                <a href="/admin-dashboard/" class="nav-link">
+                    <i class="bi bi-house"></i>
+                    Главная
+                </a>
+                <a href="/admin-dashboard/students/" class="nav-link">
+                    <i class="bi bi-people"></i>
+                    Ученики
+                </a>
+                <a href="/admin-dashboard/groups/" class="nav-link">
+                    <i class="bi bi-journal-text"></i>
+                    Классы
+                </a>
+                <a href="/admin-dashboard/subjects/" class="nav-link">
+                    <i class="bi bi-book"></i>
+                    Предметы
+                </a>
+                <a href="/teachers/" class="nav-link">
+                    <i class="bi bi-person-badge"></i>
+                    Учителя
+                </a>
+            </div>
+        
+        {% elif request.user.groups.all.0.name == 'student' %}
+            <!-- ПАНЕЛЬ СТУДЕНТА -->
+            <a href="/student/dashboard/" class="logo">
+                <i class="bi bi-person-video3"></i>
+                Панель студента
+            </a>
+            
+            <div class="nav-menu">
+                <a href="/student/dashboard/" class="nav-link">
+                    <i class="bi bi-house"></i>
+                    Главная
+                </a>
+                <a href="/student/schedule/" class="nav-link">
+                    <i class="bi bi-calendar-week"></i>
+                    Расписание
+                </a>
+                <a href="/student/grades/" class="nav-link">
+                    <i class="bi bi-journal-check"></i>
+                    Оценки
+                </a>
+                <a href="/student/homework/" class="nav-link">
+                    <i class="bi bi-journal-text"></i>
+                    Задания
+                </a>
+            </div>
+        
+        {% elif request.user.groups.all.0.name == 'teacher' %}
+            <!-- ПАНЕЛЬ УЧИТЕЛЯ -->
+            <a href="/dashboard/" class="logo">
+                <i class="bi bi-person-workspace"></i>
+                Панель учителя
+            </a>
+            
+            <div class="nav-menu">
+                <a href="/dashboard/" class="nav-link">
+                    <i class="bi bi-house"></i>
+                    Главная
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-calendar-event"></i>
+                    Расписание
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-mortarboard"></i>
+                    Мои классы
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-journal-plus"></i>
+                    Задания
+                </a>
+            </div>
+        
+        {% else %}
+            <!-- ОБЩАЯ ПАНЕЛЬ (если нет группы или группа неизвестна) -->
+            <a href="/dashboard/" class="logo">
+                <i class="bi bi-house-door"></i>
+                MPTed
+            </a>
+            
+            <div class="nav-menu">
+                <a href="/dashboard/" class="nav-link">
+                    <i class="bi bi-house"></i>
+                    Главная
+                </a>
+            </div>
+        {% endif %}
+    </div>
+    
+    <div class="nav-right">
+        <!-- Поиск (только для админа и учителя) -->
+        {% if request.user.is_superuser or request.user.groups.all.0.name == 'admin' or request.user.groups.all.0.name == 'teacher' %}
+            <div class="search-box">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" class="search-input" placeholder="Поиск...">
+            </div>
+        {% endif %}
+        
+        <!-- Уведомления (только для админа и учителя) -->
+        {% if request.user.is_superuser or request.user.groups.all.0.name == 'admin' or request.user.groups.all.0.name == 'teacher' %}
+            <button class="btn btn-icon" id="notificationsBtn">
+                <i class="bi bi-bell"></i>
+            </button>
+        {% endif %}
+        
+        <div class="profile-dropdown">
+            <button class="profile-btn" id="profileDropdown">
+                <div class="profile-avatar" id="userAvatar">
+                    {% if request.user.first_name and request.user.last_name %}
+                        {{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}
+                    {% else %}
+                        {{ request.user.username|first|upper }}
+                    {% endif %}
+                </div>
+                <div class="profile-info">
+                    <div class="profile-name" id="userName">
+                        {% if request.user.first_name and request.user.last_name %}
+                            {{ request.user.first_name }} {{ request.user.last_name }}
+                        {% else %}
+                            {{ request.user.username }}
+                        {% endif %}
+                    </div>
+                    <div class="profile-role">
+                        {% if request.user.is_superuser %}
+                            Суперпользователь
+                        {% elif request.user.groups.all.0.name == 'admin' %}
+                            Администратор
+                        {% elif request.user.groups.all.0.name == 'teacher' %}
+                            Учитель
+                        {% elif request.user.groups.all.0.name == 'student' %}
+                            Ученик
+                        {% elif request.user.groups.all.0.name == 'parent' %}
+                            Родитель
+                        {% else %}
+                            Пользователь
+                        {% endif %}
+                    </div>
+                </div>
+                <i class="bi bi-chevron-down"></i>
+            </button>
+            
+            <div class="dropdown-menu" id="dropdownMenu">
+                <!-- Ссылка на профиль в зависимости от роли -->
+                {% if request.user.groups.all.0.name == 'student' %}
+                    <a href="{% url 'student_profile' %}" class="dropdown-item">
+                        <i class="bi bi-person"></i>
+                        Мой профиль
+                    </a>
+                {% elif request.user.is_superuser or request.user.groups.all.0.name == 'admin' %}
+                    <a href="/admin-dashboard/profile/" class="dropdown-item">
+                        <i class="bi bi-person"></i>
+                        Профиль администратора
+                    </a>
+                {% else %}
+                    <a href="#" class="dropdown-item">
+                        <i class="bi bi-person"></i>
+                        Мой профиль
+                    </a>
+                {% endif %}
+                
+                <!-- Настройки для админа -->
+                {% if request.user.is_superuser or request.user.groups.all.0.name == 'admin' %}
+                    <a href="/admin-dashboard/settings/" class="dropdown-item">
+                        <i class="bi bi-gear"></i>
+                        Настройки системы
+                    </a>
+                {% endif %}
+                
+                <!-- Переключение темы для всех -->
+                <a href="#" class="dropdown-item" id="themeToggle">
+                    <i class="bi bi-moon"></i>
+                    <span class="theme-toggle-text">Темная тема</span>
+                </a>
+                
+                <div class="dropdown-divider"></div>
+                
+                <!-- Выход -->
+                <a href="/logout/" class="dropdown-item" id="logoutBtn">
+                    <i class="bi bi-box-arrow-right"></i>
+                    Выйти
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Навигационная панель загружена');
+    
+    // ===== ВЫПАДАЮЩЕЕ МЕНЮ ПРОФИЛЯ =====
+    const profileDropdown = document.getElementById('profileDropdown');
+    const dropdownMenu = document.getElementById('dropdownMenu');
+    
+    if (profileDropdown && dropdownMenu) {
+        console.log('Элементы меню найдены');
+        
+        // Клик по кнопке профиля
+        profileDropdown.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Клик по профилю');
+            dropdownMenu.classList.toggle('show');
+            
+            // Добавляем класс активной кнопке
+            this.classList.toggle('active');
+        });
+        
+        // Закрытие при клике вне меню
+        document.addEventListener('click', function(e) {
+            if (!profileDropdown.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                dropdownMenu.classList.remove('show');
+                profileDropdown.classList.remove('active');
+            }
+        });
+        
+        // Закрытие при клике на пункт меню (кроме переключателя темы)
+        dropdownMenu.querySelectorAll('.dropdown-item:not(#themeToggle)').forEach(item => {
+            item.addEventListener('click', () => {
+                dropdownMenu.classList.remove('show');
+                profileDropdown.classList.remove('active');
+            });
+        });
+        
+        // Закрытие при нажатии Esc
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                dropdownMenu.classList.remove('show');
+                profileDropdown.classList.remove('active');
+            }
+        });
+    } else {
+        console.warn('Элементы меню не найдены:', {
+            profileDropdown: profileDropdown,
+            dropdownMenu: dropdownMenu
+        });
+    }
+    
+    // ===== ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ В ВЫПАДАЮЩЕМ МЕНЮ =====
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        // Инициализация темы при загрузке
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const icon = themeToggle.querySelector('i');
+            const text = themeToggle.querySelector('.theme-toggle-text');
+            
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-theme');
+                icon.className = 'bi bi-sun';
+                text.textContent = 'Светлая тема';
+            } else {
+                document.body.classList.remove('dark-theme');
+                icon.className = 'bi bi-moon';
+                text.textContent = 'Темная тема';
+                localStorage.setItem('theme', 'light');
+            }
+        }
+        
+        // Применяем тему при загрузке
+        initTheme();
+        
+        // Обработчик клика по переключателю темы
+        themeToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const isDark = document.body.classList.toggle('dark-theme');
+            const icon = this.querySelector('i');
+            const text = this.querySelector('.theme-toggle-text');
+            
+            if (isDark) {
+                icon.className = 'bi bi-sun';
+                text.textContent = 'Светлая тема';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                icon.className = 'bi bi-moon';
+                text.textContent = 'Темная тема';
+                localStorage.setItem('theme', 'light');
+            }
+        });
+    }
+    
+    // ===== ОБРАБОТКА ВЫХОДА =====
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('Вы уверены, что хотите выйти?')) {
+                console.log('Выход из системы');
+                window.location.href = this.getAttribute('href');
+            }
+        });
+    }
+    
+    // ===== АКТИВНЫЕ ССЫЛКИ В НАВИГАЦИИ =====
+    const currentPath = window.location.pathname;
+    const navLinks = document.querySelectorAll('.nav-link');
+    
+    navLinks.forEach(link => {
+        const linkPath = link.getAttribute('href');
+        if (linkPath === currentPath || 
+            (linkPath !== '/' && linkPath !== '#' && currentPath.startsWith(linkPath))) {
+            link.classList.add('active');
+        } else {
+            link.classList.remove('active');
+        }
+    });
+    
+    // ===== ПОИСК (базовая реализация) =====
+    const searchInput = document.querySelector('.search-input');
+    const searchIcon = document.querySelector('.search-icon');
+    
+    if (searchInput && searchIcon) {
+        searchIcon.addEventListener('click', function() {
+            performSearch();
+        });
+        
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+        
+        function performSearch() {
+            const query = searchInput.value.trim();
+            if (query) {
+                console.log('Поиск:', query);
+                // Определяем роль пользователя для поиска
+                const isAdmin = document.querySelector('.logo').textContent.includes('Админ');
+                const isStudent = document.querySelector('.logo').textContent.includes('студента');
+                const isTeacher = document.querySelector('.logo').textContent.includes('учителя');
+                
+                // Показываем сообщение в зависимости от роли
+                if (isAdmin) {
+                    alert('Поиск в админ-панели: ' + query);
+                } else if (isTeacher) {
+                    alert('Поиск для учителя: ' + query);
+                } else {
+                    alert('Поиск: ' + query);
+                }
+            }
+        }
+    }
+    
+    // ===== УВЕДОМЛЕНИЯ (если есть кнопка) =====
+    const notificationsBtn = document.getElementById('notificationsBtn');
+    if (notificationsBtn) {
+        notificationsBtn.addEventListener('click', function() {
+            // Здесь можно добавить логику показа уведомлений
+            const isAdmin = document.querySelector('.logo').textContent.includes('Админ');
+            const isTeacher = document.querySelector('.logo').textContent.includes('учителя');
+            
+            if (isAdmin) {
+                alert('Уведомления для администратора');
+            } else if (isTeacher) {
+                alert('Уведомления для учителя');
+            } else {
+                alert('Уведомления');
+            }
+        });
+    }
+});
+</script>
+
+<style>
+    /* Дополнительные стили для разных ролей */
+    
+    /* Цвет логотипа в зависимости от роли - будет через JS */
+    .logo {
+        color: var(--primary); /* Базовый цвет по умолчанию */
+    }
+    
+    /* Стили для аватара профиля */
+    .profile-avatar {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: white;
+        font-weight: bold;
+    }
+    
+    /* Стили для выпадающего меню */
+    .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        min-width: 200px;
+        margin-top: 0.5rem;
+        display: none;
+        z-index: 1000;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        opacity: 0;
+        transform: translateY(-10px);
+        transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    
+    .dropdown-menu.show {
+        display: block;
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    .dark-theme .dropdown-menu {
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Анимация для кнопки профиля */
+    .profile-btn.active {
+        background: rgba(124, 58, 237, 0.1);
+    }
+    
+    /* Плавное появление аватара */
+    .profile-avatar {
+        transition: transform 0.2s ease;
+    }
+    
+    .profile-btn:hover .profile-avatar {
+        transform: scale(1.1);
+    }
+    
+    /* Адаптивность */
+    @media (max-width: 768px) {
+        .dropdown-menu {
+            position: fixed;
+            top: 60px;
+            right: 10px;
+            left: 10px;
+            width: auto;
+            min-width: auto;
+        }
+        
+        .profile-info {
+            display: none;
+        }
+        
+        .profile-btn i.bi-chevron-down {
+            display: none;
+        }
+        
+        .nav-menu {
+            display: none;
+        }
+        
+        .search-box {
+            display: none;
+        }
+    }
+    
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .profile-info .profile-role {
+            display: none;
+        }
+    }
+</style>

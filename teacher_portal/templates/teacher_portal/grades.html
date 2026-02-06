@@ -1,0 +1,243 @@
+<!-- teacher_portal/templates/teacher_portal/grades.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Управление оценками - MPTed{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "teacher_portal/_sidebar.html" %}
+
+    <main class="main-content">
+        <!-- Шапка -->
+        <div class="content-header mb-4">
+            <div class="header-left">
+                <h1 class="content-title">Оценки</h1>
+                <p class="content-subtitle">
+                    Всего оценок: {{ grade_stats.total|default:"0" }}
+                    {% if grade_stats.average %}• Средний балл: {{ grade_stats.average|floatformat:1 }}{% endif %}
+                </p>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'teacher_portal:add_grade' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i>
+                    Выставить оценку
+                </a>
+            </div>
+        </div>
+
+        <!-- Фильтры -->
+        <div class="filter-card mb-4">
+            <form method="get" class="filter-form">
+                <div class="filter-row">
+                    <div class="search-box">
+                        <i class="bi bi-search search-icon"></i>
+                        <input type="text" 
+                               name="search" 
+                               class="search-input" 
+                               placeholder="Поиск по ученику..." 
+                               value="{{ request.GET.search|default:'' }}">
+                    </div>
+                    
+                    <select name="group" class="filter-select">
+                        <option value="">Все классы</option>
+                        {% for group in groups %}
+                        <option value="{{ group.id }}" {% if filters.group_id == group.id|stringformat:"i" %}selected{% endif %}>
+                            {{ group.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    
+                    <select name="subject" class="filter-select">
+                        <option value="">Все предметы</option>
+                        {% for subject in subjects %}
+                        <option value="{{ subject.id }}" {% if filters.subject_id == subject.id|stringformat:"i" %}selected{% endif %}>
+                            {{ subject.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    
+                    <input type="date" 
+                           name="date_from" 
+                           class="form-control" 
+                           style="width: 150px;"
+                           value="{{ filters.date_from|default:'' }}"
+                           placeholder="С даты">
+                    
+                    <input type="date" 
+                           name="date_to" 
+                           class="form-control" 
+                           style="width: 150px;"
+                           value="{{ filters.date_to|default:'' }}"
+                           placeholder="По дату">
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-filter"></i>
+                        Фильтровать
+                    </button>
+                    
+                    {% if request.GET %}
+                    <a href="{% url 'teacher_portal:grades' %}" class="btn btn-outline">
+                        Сбросить
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+
+        <!-- Статистика -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="text-3xl font-bold text-success">{{ grade_stats.excellent|default:"0" }}</div>
+                    <div class="text-sm text-muted">Отличные (5)</div>
+                </div>
+            </div>
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="text-3xl font-bold text-info">{{ grade_stats.good|default:"0" }}</div>
+                    <div class="text-sm text-muted">Хорошие (4)</div>
+                </div>
+            </div>
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="text-3xl font-bold text-warning">{{ grade_stats.satisfactory|default:"0" }}</div>
+                    <div class="text-sm text-muted">Удовлетв. (3)</div>
+                </div>
+            </div>
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="text-3xl font-bold text-danger">{{ grade_stats.poor|default:"0" }}</div>
+                    <div class="text-sm text-muted">Неудовл. (2)</div>
+                </div>
+            </div>
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="text-3xl font-bold text-primary">{{ grade_stats.total|default:"0" }}</div>
+                    <div class="text-sm text-muted">Всего оценок</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Таблица оценок -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title mb-0">История оценок</h2>
+            </div>
+            <div class="card-body">
+                {% if page_obj %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th width="15%">Дата</th>
+                                <th width="20%">Ученик</th>
+                                <th width="15%">Предмет</th>
+                                <th width="10%">Оценка</th>
+                                <th width="15%">Тип</th>
+                                <th width="15%">Класс</th>
+                                <th width="10%">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for grade in page_obj %}
+                            <tr>
+                                <td>{{ grade.date|date:"d.m.Y" }}</td>
+                                <td>
+                                    <div class="user-name">{{ grade.student.get_full_name }}</div>
+                                </td>
+                                <td>{{ grade.subject.name }}</td>
+                                <td>
+                                    <span class="badge 
+                                        {% if grade.value >= 4.5 %}success
+                                        {% elif grade.value >= 3.5 %}info
+                                        {% elif grade.value >= 2.5 %}warning
+                                        {% else %}danger{% endif %}">
+                                        {{ grade.value }}
+                                    </span>
+                                </td>
+                                <td>{{ grade.get_grade_type_display }}</td>
+                                <td>
+                                    {% if grade.schedule_lesson and grade.schedule_lesson.daily_schedule.student_group %}
+                                        {{ grade.schedule_lesson.daily_schedule.student_group.name }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="{% url 'teacher_portal:edit_grade' grade.id %}" 
+                                           class="btn-icon success" 
+                                           title="Редактировать">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form method="post" 
+                                              action="{% url 'teacher_portal:delete_grade' grade.id %}" 
+                                              class="inline-form"
+                                              onsubmit="return confirm('Удалить эту оценку?')">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn-icon danger" title="Удалить">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Пагинация -->
+                {% if page_obj.paginator.num_pages > 1 %}
+                <div class="pagination">
+                    {% if page_obj.has_previous %}
+                        <a href="?page=1{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                           class="pagination-item">
+                            &laquo;
+                        </a>
+                        <a href="?page={{ page_obj.previous_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                           class="pagination-item">
+                            &lsaquo;
+                        </a>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <span class="pagination-item active">{{ num }}</span>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <a href="?page={{ num }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                               class="pagination-item">
+                                {{ num }}
+                            </a>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                           class="pagination-item">
+                            &rsaquo;
+                        </a>
+                        <a href="?page={{ page_obj.paginator.num_pages }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                           class="pagination-item">
+                            &raquo;
+                        </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-journal-check"></i>
+                    <h3>Оценок нет</h3>
+                    <p>Вы еще не выставляли оценок</p>
+                    <a href="{% url 'teacher_portal:add_grade' %}" class="btn btn-primary mt-3">
+                        <i class="bi bi-plus-circle"></i>
+                        Выставить первую оценку
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

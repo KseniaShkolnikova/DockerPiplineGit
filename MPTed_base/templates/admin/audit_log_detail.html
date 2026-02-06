@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Детали лога аудита #{{ log.id }} - MPTed{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "includes/sidebar.html" %}
+    
+    <main class="main-content">
+        <!-- Хлебные крошки -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="{% url 'audit_logs' %}">Логи аудита</a>
+                </li>
+                <li class="breadcrumb-item active">Запись #{{ log.id }}</li>
+            </ol>
+        </nav>
+
+        <!-- Заголовок -->
+        <div class="content-header mb-4">
+            <div class="header-left">
+                <h1 class="content-title">Запись лога #{{ log.id }}</h1>
+                <p class="content-subtitle">Детальная информация о действии</p>
+            </div>
+            <div class="header-right">
+                <a href="{% url 'audit_logs' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Назад
+                </a>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Основная информация -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Основная информация</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm table-borderless">
+                            <tr>
+                                <td width="30%"><strong>ID:</strong></td>
+                                <td>#{{ log.id }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Время:</strong></td>
+                                <td>
+                                    {{ log.timestamp|date:"d.m.Y H:i:s" }}
+                                    <small class="text-muted ms-2">
+                                        ({{ log.timestamp|timesince }} назад)
+                                    </small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Действие:</strong></td>
+                                <td>
+                                    <span class="badge 
+                                        {% if log.action == 'CREATE' %}bg-success
+                                        {% elif log.action == 'UPDATE' %}bg-warning text-dark
+                                        {% elif log.action == 'DELETE' %}bg-danger
+                                        {% elif log.action == 'LOGIN' %}bg-info
+                                        {% elif log.action == 'LOGOUT' %}bg-secondary
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ log.get_action_display }}
+                                    </span>
+                                    <small class="text-muted ms-2">({{ log.action }})</small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Модель:</strong></td>
+                                <td><code>{{ log.model_name }}</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>ID объекта:</strong></td>
+                                <td>
+                                    {% if log.object_id %}
+                                    <span class="badge bg-light text-dark">
+                                        {{ log.object_id }}
+                                    </span>
+                                    {% else %}-{% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Системное действие:</strong></td>
+                                <td>
+                                    {% if log.is_system_action %}
+                                    <span class="badge bg-secondary">Да</span>
+                                    {% else %}
+                                    <span class="badge bg-light text-dark">Нет</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Информация о пользователе -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Информация о пользователе</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if log.user %}
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="user-avatar me-3">
+                                {{ log.user.username|first|upper }}
+                            </div>
+                            <div>
+                                <h6 class="mb-1">{{ log.user.get_full_name|default:log.user.username }}</h6>
+                                <p class="text-muted mb-0">{{ log.user.username }}</p>
+                            </div>
+                        </div>
+                        
+                        <table class="table table-sm table-borderless">
+                            <tr>
+                                <td width="40%"><strong>Email:</strong></td>
+                                <td>{{ log.user.email|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Активен:</strong></td>
+                                <td>
+                                    {% if log.user.is_active %}
+                                    <span class="badge bg-success">Активен</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Неактивен</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Дата регистрации:</strong></td>
+                                <td>{{ log.user.date_joined|date:"d.m.Y" }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Последний вход:</strong></td>
+                                <td>
+                                    {% if log.user.last_login %}
+                                    {{ log.user.last_login|date:"d.m.Y H:i" }}
+                                    {% else %}-{% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-robot" style="font-size: 3rem; color: #dee2e6;"></i>
+                            <p class="text-muted mt-3">Системное действие</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Информация о запросе -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Информация о запросе</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>IP адрес:</strong><br>
+                        <code>{{ log.ip_address|default:"-" }}</code>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Метод запроса:</strong><br>
+                        <span class="badge bg-info">{{ log.request_method|default:"-" }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Путь запроса:</strong><br>
+                        <code>{{ log.request_path|default:"-" }}</code>
+                    </div>
+                </div>
+                
+                {% if log.user_agent %}
+                <hr>
+                <div>
+                    <strong>User Agent:</strong>
+                    <div class="code-block mt-2">
+                        {{ log.user_agent }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Изменения данных -->
+        {% if log.old_values or log.new_values %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Изменения данных</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% if log.old_values %}
+                    <div class="col-md-6">
+                        <h6>Старые значения:</h6>
+                        <div class="code-block">
+                            {{ old_values_formatted|default:"Нет данных" }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if log.new_values %}
+                    <div class="col-md-6">
+                        <h6>Новые значения:</h6>
+                        <div class="code-block">
+                            {{ new_values_formatted|default:"Нет данных" }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </main>
+</div>
+
+<style>
+.user-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.code-block {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 15px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    max-height: 300px;
+    overflow-y: auto;
+}
+</style>
+{% endblock %}

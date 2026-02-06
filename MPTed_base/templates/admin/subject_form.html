@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if subject %}Редактирование предмета{% else %}Добавление предмета{% endif %}{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "includes/sidebar.html" %}
+    
+    <main class="main-content">
+        <div class="content-header">
+            <div>
+                <h1 class="content-title">
+                    {% if subject %}
+                    Редактирование предмета: {{ subject.name }}
+                    {% else %}
+                    Добавление нового предмета
+                    {% endif %}
+                </h1>
+                <p class="content-subtitle">
+                    {% if subject %}
+                    Измените информацию о предмете
+                    {% else %}
+                    Заполните форму для добавления нового предмета
+                    {% endif %}
+                </p>
+            </div>
+            <a href="{% url 'subjects_list' %}" class="btn btn-outline">
+                <i class="bi bi-arrow-left"></i> Назад к списку
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Форма -->
+            <div class="lg:col-span-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Информация о предмете</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="post">
+                            {% csrf_token %}
+                            
+                            <div class="form-group">
+                                <label for="name" class="form-label">
+                                    <i class="bi bi-book"></i> Название предмета
+                                </label>
+                                <input type="text" 
+                                       id="name" 
+                                       name="name" 
+                                       class="form-control" 
+                                       value="{{ subject.name|default:'' }}"
+                                       placeholder="Например: Математика, Физика, Литература"
+                                       required
+                                       maxlength="100">
+                                <div class="form-hint">Уникальное название предмета (до 100 символов)</div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="description" class="form-label">
+                                    <i class="bi bi-text-paragraph"></i> Описание
+                                </label>
+                                <textarea id="description" 
+                                          name="description" 
+                                          class="form-control" 
+                                          rows="4"
+                                          placeholder="Краткое описание предмета, цели изучения, особенности...">{{ subject.description|default:'' }}</textarea>
+                                <div class="form-hint">Необязательное поле. Максимум 1000 символов</div>
+                            </div>
+                            
+                            <div class="flex gap-2 mt-6">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle"></i>
+                                    {% if subject %}Сохранить изменения{% else %}Добавить предмет{% endif %}
+                                </button>
+                                <a href="{% url 'subjects_list' %}" class="btn btn-outline">
+                                    Отмена
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Информация -->
+            <div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Требования</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="space-y-4">
+                            <div>
+                                <h4 style="font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                                    Правила создания предметов
+                                </h4>
+                                <ul style="font-size: 0.875rem; list-style: none; padding: 0; margin: 0;">
+                                    <li style="margin-bottom: 0.5rem; display: flex; align-items: start; gap: 0.5rem;">
+                                        <i class="bi bi-check-circle" style="color: var(--success); flex-shrink: 0; margin-top: 0.125rem;"></i>
+                                        <span>Название должно быть уникальным</span>
+                                    </li>
+                                    <li style="margin-bottom: 0.5rem; display: flex; align-items: start; gap: 0.5rem;">
+                                        <i class="bi bi-check-circle" style="color: var(--success); flex-shrink: 0; margin-top: 0.125rem;"></i>
+                                        <span>Минимум 2 символа в названии</span>
+                                    </li>
+                                    <li style="margin-bottom: 0.5rem; display: flex; align-items: start; gap: 0.5rem;">
+                                        <i class="bi bi-check-circle" style="color: var(--success); flex-shrink: 0; margin-top: 0.125rem;"></i>
+                                        <span>Максимум 100 символов в названии</span>
+                                    </li>
+                                    <li style="display: flex; align-items: start; gap: 0.5rem;">
+                                        <i class="bi bi-check-circle" style="color: var(--success); flex-shrink: 0; margin-top: 0.125rem;"></i>
+                                        <span>Описание необязательно</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            
+                            {% if subject %}
+                            <div>
+                                <h4 style="font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                                    Статистика
+                                </h4>
+                                <div style="font-size: 0.875rem;">
+                                    <div style="display: flex; justify-content: space-between; padding: 0.375rem 0; border-bottom: 1px solid var(--border);">
+                                        <span style="color: var(--text-secondary);">Учителей:</span>
+                                        <span style="font-weight: 500;">{{ subject.teacher_count|default:"0" }}</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 0.375rem 0; border-bottom: 1px solid var(--border);">
+                                        <span style="color: var(--text-secondary);">Уроков:</span>
+                                        <span style="font-weight: 500;">{{ subject.lesson_count|default:"0" }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <div>
+                                <h4 style="font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                                    Удаление предмета
+                                </h4>
+                                <p style="font-size: 0.75rem; color: var(--text-secondary);">
+                                    Предмет можно удалить только если он не используется ни одним учителем и не назначен ни на один урок.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+    .form-control[type="text"],
+    .form-control[type="number"] {
+        -moz-appearance: textfield;
+    }
+    
+    .form-control[type="number"]::-webkit-outer-spin-button,
+    .form-control[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    
+    textarea.form-control {
+        resize: vertical;
+        min-height: 100px;
+        max-height: 300px;
+    }
+    
+    @media (max-width: 1024px) {
+        .grid-cols-1.lg\:grid-cols-3 {
+            grid-template-columns: 1fr;
+        }
+        
+        .lg\:col-span-2 {
+            grid-column: 1;
+        }
+    }
+</style>
+{% endblock %}

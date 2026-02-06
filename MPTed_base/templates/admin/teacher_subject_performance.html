@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Производительность - {{ teacher_user.get_full_name }} - {{ subject.name }} - MPTed{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "includes/sidebar.html" %}
+    
+    <main class="main-content">
+        <!-- Хлебные крошки -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="{% url 'teachers_overview' %}">Обзор учителей</a>
+                </li>
+                <li class="breadcrumb-item">
+                    <a href="{% url 'teacher_full_detail' teacher_user.id %}">{{ teacher_user.get_full_name }}</a>
+                </li>
+                <li class="breadcrumb-item active">{{ subject.name }}</li>
+            </ol>
+        </nav>
+
+        <!-- Заголовок -->
+        <div class="content-header mb-4">
+            <div class="header-left">
+                <h1 class="content-title">{{ subject.name }}</h1>
+                <p class="content-subtitle">
+                    Производительность учителя {{ teacher_user.get_full_name }}
+                </p>
+            </div>
+            <div class="header-right">
+                <a href="{% url 'teacher_full_detail' teacher_user.id %}" 
+                   class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Назад
+                </a>
+            </div>
+        </div>
+
+        <!-- Основная статистика -->
+        <div class="stats-grid mb-4">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon warning">
+                        <i class="bi bi-journal-text"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ total_grades }}</div>
+                <div class="stat-label">Оценок по предмету</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon 
+                        {% if avg_grade >= 4.5 %}success
+                        {% elif avg_grade >= 3.5 %}warning
+                        {% elif avg_grade > 0 %}danger
+                        {% else %}secondary{% endif %}">
+                        <i class="bi bi-graph-up"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ avg_grade }}</div>
+                <div class="stat-label">Средний балл</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon primary">
+                        <i class="bi bi-people"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ teaching_groups|length }}</div>
+                <div class="stat-label">Классов</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon info">
+                        <i class="bi bi-calendar"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ monthly_stats|length }}</div>
+                <div class="stat-label">Месяцев активности</div>
+            </div>
+        </div>
+
+        <!-- Группы учителя -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Классы по предмету</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for stat in group_stats %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card border">
+                            <div class="card-body text-center">
+                                <h4 class="text-primary">{{ stat.group.name }}</h4>
+                                <p class="text-muted">{{ stat.group.year }} год обучения</p>
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <div class="text-muted small">Оценок</div>
+                                        <div class="fw-bold">{{ stat.total }}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-muted small">Средний балл</div>
+                                        <div class="fw-bold">{{ stat.avg }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12">
+                        <div class="text-center py-3">
+                            <i class="bi bi-people" style="font-size: 2rem; color: #dee2e6;"></i>
+                            <p class="text-muted mt-2">Нет данных по классам</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Статистика по месяцам -->
+        {% if monthly_stats %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Активность по месяцам</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Месяц</th>
+                                <th>Оценок</th>
+                                <th>Средний балл</th>
+                                <th>Прогресс</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stat in monthly_stats %}
+                            <tr>
+                                <td>
+                                    <strong>{{ stat.month_name }} {{ stat.year }}</strong>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ stat.count }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge 
+                                        {% if stat.avg >= 4.5 %}bg-success
+                                        {% elif stat.avg >= 3.5 %}bg-warning text-dark
+                                        {% else %}bg-danger{% endif %}">
+                                        {{ stat.avg }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar bg-primary" 
+                                             style="width: {{ stat.count|floatformat:0 }}%">
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Распределение оценок -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Распределение оценок</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if grade_distribution %}
+                        <div class="grade-distribution-detail">
+                            {% for value, stat in grade_distribution.items %}
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span>
+                                        <span class="badge 
+                                            {% if value == 5 %}bg-success
+                                            {% elif value == 4 %}bg-info
+                                            {% elif value == 3 %}bg-warning text-dark
+                                            {% else %}bg-danger{% endif %}">
+                                            Оценка {{ value }}
+                                        </span>
+                                    </span>
+                                    <span class="fw-bold">{{ stat.count }} ({{ stat.percentage }}%)</span>
+                                </div>
+                                <div class="progress" style="height: 10px;">
+                                    <div class="progress-bar 
+                                        {% if value == 5 %}bg-success
+                                        {% elif value == 4 %}bg-info
+                                        {% elif value == 3 %}bg-warning
+                                        {% else %}bg-danger{% endif %}" 
+                                        style="width: {{ stat.percentage }}%">
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-pie-chart" style="font-size: 2rem; color: #dee2e6;"></i>
+                            <p class="text-muted mt-2">Нет данных о распределении оценок</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Последние оценки -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Последние оценки</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group list-group-flush">
+                            {% for grade in recent_grades %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ grade.student.get_full_name }}</strong>
+                                        <div class="text-muted small">
+                                            {{ grade.date|date:"d.m.Y" }} • 
+                                            {{ grade.get_grade_type_display }}
+                                            {% if grade.schedule_lesson.daily_schedule.student_group %}
+                                            • {{ grade.schedule_lesson.daily_schedule.student_group.name }}
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span class="badge 
+                                            {% if grade.value >= 4.5 %}bg-success
+                                            {% elif grade.value >= 3.5 %}bg-warning text-dark
+                                            {% else %}bg-danger{% endif %} fs-5">
+                                            {{ grade.value }}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% if grade.comment %}
+                                <div class="mt-2">
+                                    <small class="text-muted">{{ grade.comment|truncatechars:50 }}</small>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% empty %}
+                            <div class="text-center py-4">
+                                <i class="bi bi-journal-x" style="font-size: 2rem; color: #dee2e6;"></i>
+                                <p class="text-muted mt-2">Нет оценок</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+.stat-icon.primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.stat-icon.warning { background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); }
+.stat-icon.success { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); }
+.stat-icon.info { background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%); }
+.grade-distribution-detail .progress {
+    border-radius: 5px;
+    overflow: hidden;
+}
+</style>
+{% endblock %}

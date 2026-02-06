@@ -1,0 +1,352 @@
+<!-- teacher_portal/templates/teacher_portal/announcement_form.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+    {% if edit_mode %}Редактировать объявление - MPTed{% else %}Создать объявление - MPTed{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .target-selector {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .target-option {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .target-option:hover {
+        background: var(--hover);
+    }
+    
+    .target-option.selected {
+        background: rgba(124, 58, 237, 0.1);
+        border-color: var(--primary);
+    }
+    
+    .target-option input[type="radio"] {
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "teacher_portal/_sidebar.html" %}
+
+    <main class="main-content">
+        <!-- Шапка -->
+        <div class="content-header mb-4">
+            <div>
+                <h1 class="content-title">
+                    {% if edit_mode %}Редактировать объявление{% else %}Создать объявление{% endif %}
+                </h1>
+                <p class="content-subtitle">Сообщение для учеников или родителей</p>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'teacher_portal:announcements' %}" class="btn btn-outline">
+                    <i class="bi bi-arrow-left"></i>
+                    Назад к списку
+                </a>
+                {% if edit_mode %}
+                <form method="post" 
+                      action="{% url 'teacher_portal:delete_announcement' announcement.id %}" 
+                      style="display: inline;"
+                      onsubmit="return confirm('Удалить это объявление?')">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i>
+                        Удалить
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="form-container">
+            <form method="post">
+                {% csrf_token %}
+                
+                {% if edit_mode %}
+                <!-- Скрытое поле для идентификации режима -->
+                <input type="hidden" name="edit_mode" value="true">
+                {% endif %}
+                
+                <div class="form-card">
+                    <div class="form-title">
+                        <i class="bi bi-bullseye"></i>
+                        Аудитория
+                    </div>
+                    
+                    <div class="target-selector">
+                        <div class="target-option {% if announcement.is_for_all %}selected{% endif %}"
+                             onclick="selectTarget('all')">
+                            <input type="radio" 
+                                   name="is_for_all" 
+                                   id="target_all" 
+                                   value="on"
+                                   {% if announcement.is_for_all %}checked{% endif %}
+                                   class="d-none">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center" 
+                                     style="width: 40px; height: 40px;">
+                                    <i class="bi bi-globe"></i>
+                                </div>
+                                <div>
+                                    <div class="font-semibold">Для всех классов</div>
+                                    <div class="text-sm text-muted">Увидят все ученики и родители</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% for group in groups %}
+                        <div class="target-option mt-2 {% if not announcement.is_for_all and announcement.student_group.id == group.id %}selected{% endif %}"
+                             onclick="selectTarget('group', {{ group.id }})">
+                            <input type="radio" 
+                                   name="group" 
+                                   id="target_group_{{ group.id }}" 
+                                   value="{{ group.id }}"
+                                   {% if not announcement.is_for_all and announcement.student_group.id == group.id %}checked{% endif %}
+                                   class="d-none">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
+                                     style="width: 40px; height: 40px;">
+                                    <i class="bi bi-people"></i>
+                                </div>
+                                <div>
+                                    <div class="font-semibold">Для {{ group.name }}</div>
+                                    <div class="text-sm text-muted">Увидят только ученики {{ group.name }} и их родители</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-card">
+                    <div class="form-title">
+                        <i class="bi bi-card-text"></i>
+                        Содержание объявления
+                    </div>
+                    
+                    <!-- Заголовок -->
+                    <div class="form-group">
+                        <label for="title">
+                            <i class="bi bi-type"></i>
+                            Заголовок *
+                        </label>
+                        <input type="text" 
+                               name="title" 
+                               id="title" 
+                               class="form-input" 
+                               placeholder="Введите заголовок объявления"
+                               value="{{ announcement.title|default:'' }}"
+                               required>
+                        <span class="form-help">Краткий и понятный заголовок</span>
+                    </div>
+                    
+                    <!-- Содержание -->
+                    <div class="form-group">
+                        <label for="content">
+                            <i class="bi bi-card-text"></i>
+                            Текст объявления *
+                        </label>
+                        <textarea name="content" 
+                                  id="content" 
+                                  class="form-input" 
+                                  rows="8"
+                                  placeholder="Подробное содержание объявления..."
+                                  required>{{ announcement.content|default:'' }}</textarea>
+                        <span class="form-help">Можно использовать HTML-разметку для форматирования</span>
+                    </div>
+                    
+                    <!-- Информация о создании/редактировании -->
+                    {% if announcement %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        Объявление создано: {{ announcement.created_at|date:"d.m.Y H:i" }}
+                        {% if announcement.updated_at and announcement.updated_at != announcement.created_at %}
+                        <br>Последнее редактирование: {{ announcement.updated_at|date:"d.m.Y H:i" }}
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Предпросмотр -->
+                    <div class="mt-4">
+                        <button type="button" 
+                                class="btn btn-outline btn-sm"
+                                onclick="togglePreview()">
+                            <i class="bi bi-eye"></i>
+                            Предпросмотр
+                        </button>
+                        
+                        <div id="preview" class="mt-3 p-4 border rounded" style="display: none;">
+                            <h4 id="preview-title" class="mb-3"></h4>
+                            <div id="preview-content"></div>
+                            <div class="mt-3 text-sm text-muted">
+                                <i class="bi bi-info-circle"></i>
+                                Это предпросмотр того, как увидят объявление ученики
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Кнопки -->
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        {% if edit_mode %}
+                        <i class="bi bi-check-circle"></i>
+                        Сохранить изменения
+                        {% else %}
+                        <i class="bi bi-send"></i>
+                        Опубликовать объявление
+                        {% endif %}
+                    </button>
+                    
+                    {% if not edit_mode %}
+                    <button type="button" class="btn btn-outline" onclick="saveDraft()">
+                        <i class="bi bi-save"></i>
+                        Сохранить черновик
+                    </button>
+                    {% endif %}
+                    
+                    <a href="{% url 'teacher_portal:announcements' %}" class="btn btn-outline">
+                        Отмена
+                    </a>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+
+<script>
+function selectTarget(type, groupId = null) {
+    // Снимаем выделение со всех вариантов
+    document.querySelectorAll('.target-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    
+    // Выделяем выбранный
+    const selectedOption = event.currentTarget;
+    selectedOption.classList.add('selected');
+    
+    // Устанавливаем значения radio-кнопок
+    if (type === 'all') {
+        document.getElementById('target_all').checked = true;
+        document.querySelectorAll('input[name="group"]').forEach(input => {
+            input.checked = false;
+        });
+    } else if (type === 'group' && groupId) {
+        document.getElementById(`target_group_${groupId}`).checked = true;
+        document.getElementById('target_all').checked = false;
+    }
+}
+
+function togglePreview() {
+    const preview = document.getElementById('preview');
+    const title = document.getElementById('title').value;
+    const content = document.getElementById('content').value;
+    
+    if (preview.style.display === 'none' || !preview.style.display) {
+        document.getElementById('preview-title').textContent = title || '[Без заголовка]';
+        document.getElementById('preview-content').innerHTML = content 
+            ? content.replace(/\n/g, '<br>') 
+            : '[Текст отсутствует]';
+        preview.style.display = 'block';
+    } else {
+        preview.style.display = 'none';
+    }
+}
+
+{% if not edit_mode %}
+function saveDraft() {
+    const title = document.getElementById('title').value;
+    const content = document.getElementById('content').value;
+    
+    if (!title && !content) {
+        alert('Нет данных для сохранения');
+        return;
+    }
+    
+    // Сохраняем в localStorage
+    const draft = {
+        title: title,
+        content: content,
+        timestamp: new Date().toISOString()
+    };
+    
+    localStorage.setItem('announcement_draft', JSON.stringify(draft));
+    
+    // Показываем уведомление
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-success';
+    alertDiv.innerHTML = `
+        Черновик сохранен
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()">&times;</button>
+    `;
+    
+    document.querySelector('.main-content').prepend(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentElement) {
+            alertDiv.remove();
+        }
+    }, 3000);
+}
+
+// Загрузка черновика при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    const draft = localStorage.getItem('announcement_draft');
+    if (draft) {
+        const draftData = JSON.parse(draft);
+        const titleInput = document.getElementById('title');
+        const contentInput = document.getElementById('content');
+        
+        if (!titleInput.value && draftData.title) {
+            titleInput.value = draftData.title;
+        }
+        if (!contentInput.value && draftData.content) {
+            contentInput.value = draftData.content;
+        }
+        
+        // Спросить о загрузке черновика
+        if (confirm('Найден сохраненный черновик объявления. Загрузить его?')) {
+            titleInput.value = draftData.title || '';
+            contentInput.value = draftData.content || '';
+        }
+    }
+});
+
+// Очистка черновика при отправке формы
+document.querySelector('form').addEventListener('submit', function() {
+    localStorage.removeItem('announcement_draft');
+});
+{% endif %}
+
+// Автоматическая настройка выбора аудитории при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    {% if announcement %}
+        {% if announcement.is_for_all %}
+            // Выделяем "Для всех"
+            document.querySelectorAll('.target-option')[0].click();
+        {% elif announcement.student_group %}
+            // Выделяем соответствующую группу
+            const groupOption = document.querySelector(`#target_group_{{ announcement.student_group.id }}`);
+            if (groupOption) {
+                groupOption.parentElement.click();
+            }
+        {% endif %}
+    {% endif %}
+});
+</script>
+{% endblock %}

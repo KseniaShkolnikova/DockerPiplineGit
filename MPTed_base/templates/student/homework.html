@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Домашние задания - MPTed{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "student/_sidebar.html" %}
+
+    <main class="main-content">
+        <div class="content-header mb-4">
+            <div>
+                <h1 class="content-title">Домашние задания</h1>
+                <p class="content-subtitle">
+                    {% if student_profile.student_group %}
+                        {{ student_profile.student_group.name }}
+                    {% else %}
+                        Вы не в классе
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <!-- Фильтры -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="get" class="filter-form">
+                    <div class="filter-row">
+                        <select name="status" class="filter-select">
+                            <option value="">Все задания</option>
+                            <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Активные</option>
+                            <option value="overdue" {% if status_filter == 'overdue' %}selected{% endif %}>Просроченные</option>
+                        </select>
+                        
+                        <select name="subject" class="filter-select">
+                            <option value="">Все предметы</option>
+                            {% for subject in subjects %}
+                            <option value="{{ subject.id }}" {% if subject_filter == subject.id|stringformat:"i" %}selected{% endif %}>
+                                {{ subject.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-funnel"></i> Применить
+                        </button>
+                        
+                        {% if request.GET %}
+                        <a href="{% url 'student_homework' %}" class="btn btn-outline">
+                            <i class="bi bi-x-circle"></i> Сбросить
+                        </a>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if not student_profile.student_group %}
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                <span>Вы не привязаны к учебному классу. Обратитесь к администратору.</span>
+            </div>
+        {% endif %}
+
+        <!-- Список заданий -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {% for hw in homeworks %}
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0">{{ hw.title }}</h3>
+                        <span class="badge {% if hw.id in submissions %}success{% elif hw.due_date < today %}danger{% else %}warning{% endif %}">
+                            {% if hw.id in submissions %}
+                                <i class="bi bi-check-circle"></i> Сдано
+                            {% elif hw.due_date < today %}
+                                <i class="bi bi-exclamation-circle"></i> Просрочено
+                            {% else %}
+                                <i class="bi bi-clock"></i> Активно
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <p>{{ hw.description }}</p>
+                    </div>
+                    
+                    <div class="space-y-2 mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Предмет:</span>
+                            <strong>{{ hw.schedule_lesson.subject.name }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Срок сдачи:</span>
+                            <strong class="{% if hw.due_date < today %}text-danger{% endif %}">
+                                {{ hw.due_date|date:"d.m.Y H:i" }}
+                            </strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Опубликовано:</span>
+                            <span>{{ hw.created_at|date:"d.m.Y" }}</span>
+                        </div>
+                    </div>
+                    
+                    {% if hw.attachment %}
+                    <div class="mb-3">
+                        <a href="{{ hw.attachment.url }}" class="btn btn-outline btn-sm" download>
+                            <i class="bi bi-download"></i> Скачать файл
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex gap-2">
+                        {% if hw.id not in submissions %}
+                            <button class="btn btn-primary btn-sm" onclick="showSubmissionForm({{ hw.id }})">
+                                <i class="bi bi-upload"></i> Сдать работу
+                            </button>
+                        {% else %}
+                            <button class="btn btn-success btn-sm" disabled>
+                                <i class="bi bi-check-circle"></i> Работа сдана
+                            </button>
+                        {% endif %}
+                        
+                        <button class="btn btn-outline btn-sm" onclick="showHomeworkDetails({{ hw.id }})">
+                            <i class="bi bi-info-circle"></i> Подробнее
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-2">
+                <div class="empty-state">
+                    <i class="bi bi-journal-text"></i>
+                    <h3>Нет домашних заданий</h3>
+                    <p>{% if request.GET %}По выбранным фильтрам задания не найдены{% else %}На данный момент нет активных заданий{% endif %}</p>
+                    {% if request.GET %}
+                        <a href="{% url 'student_homework' %}" class="btn btn-primary mt-2">Показать все задания</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Пагинация -->
+        {% if page_obj.has_other_pages %}
+        <div class="pagination mt-4">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                   class="pagination-item">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <span class="pagination-item active">{{ num }}</span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                       class="pagination-item">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                   class="pagination-item">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </main>
+</div>
+
+<!-- Модальное окно для сдачи работы -->
+<div id="submissionModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Сдать работу</h3>
+            <button class="modal-close" onclick="closeSubmissionForm()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="submissionForm" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" id="homeworkId" name="homework_id">
+                <div class="form-group">
+                    <label for="submissionText">Текст работы:</label>
+                    <textarea id="submissionText" name="submission_text" class="form-control" rows="5" placeholder="Введите текст работы..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="submissionFile">Файл работы:</label>
+                    <input type="file" id="submissionFile" name="submission_file" class="form-control">
+                    <small class="form-hint">Максимальный размер файла: 10MB</small>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeSubmissionForm()">Отмена</button>
+            <button type="button" class="btn btn-primary" onclick="submitHomework()">Сдать работу</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно с деталями задания -->
+<div id="detailsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Детали задания</h3>
+            <button class="modal-close" onclick="closeHomeworkDetails()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="homeworkDetails"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showSubmissionForm(homeworkId) {
+    document.getElementById('homeworkId').value = homeworkId;
+    document.getElementById('submissionModal').classList.add('show');
+}
+
+function closeSubmissionForm() {
+    document.getElementById('submissionModal').classList.remove('show');
+    document.getElementById('submissionForm').reset();
+}
+
+function submitHomework() {
+    const form = document.getElementById('submissionForm');
+    const formData = new FormData(form);
+    
+    fetch('{% url "submit_homework" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Работа успешно сдана!');
+            closeSubmissionForm();
+            location.reload();
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Произошла ошибка при отправке работы');
+    });
+}
+
+function showHomeworkDetails(homeworkId) {
+    // Здесь можно загрузить детали задания через AJAX
+    // Пока просто показываем пустое окно
+    document.getElementById('detailsModal').classList.add('show');
+}
+
+function closeHomeworkDetails() {
+    document.getElementById('detailsModal').classList.remove('show');
+}
+
+// Закрытие модальных окон по клику вне их
+window.addEventListener('click', function(event) {
+    const submissionModal = document.getElementById('submissionModal');
+    const detailsModal = document.getElementById('detailsModal');
+    
+    if (event.target === submissionModal) {
+        closeSubmissionForm();
+    }
+    
+    if (event.target === detailsModal) {
+        closeHomeworkDetails();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,97 @@
+<!-- Сайдбар -->
+<aside class="sidebar">
+    <div class="sidebar-section">
+        <h3 class="sidebar-title">Основное</h3>
+        <ul class="sidebar-menu">
+            <li class="sidebar-item">
+                <a href="/admin-dashboard/" class="sidebar-link">
+                    <i class="bi bi-house"></i>
+                    <span>Обзор системы</span>
+                </a>
+            </li>
+            
+            <li class="sidebar-item">
+                <a class="sidebar-link {% if request.path == '/admin-dashboard/audit-logs/' %}active{% endif %}" 
+                href="{% url 'audit_logs' %}">
+                    <i class="bi bi-journal-text"></i>
+                    <span>Логи аудита</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+    
+    <div class="sidebar-section">
+        <h3 class="sidebar-title">Управление</h3>
+        <ul class="sidebar-menu">
+            <li class="sidebar-item">
+                <a href="{% url 'students_list' %}" class="sidebar-link">
+                    <i class="bi bi-people"></i>
+                    <span>Ученики</span>
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="{% url 'groups_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'groups_list' %}active{% endif %}">
+                    <i class="bi bi-collection"></i>
+                    <span>Классы</span>
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="{% url 'subjects_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'subjects_list' %}active{% endif %}">
+                    <i class="bi bi-book"></i>
+                    <span>Предметы</span>
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="{% url 'teachers_list' %}" class="sidebar-link {% if 'teacher' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="bi bi-person-badge"></i>
+                    <span>Учителя</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+    
+    <div class="sidebar-section">
+        <h3 class="sidebar-title">Учебный процесс</h3>
+        <ul class="sidebar-menu">
+            <li class="sidebar-item">
+                    <a href="{% url 'schedule_dashboard' %}" class="sidebar-link {% if request.resolver_match.app_name == 'schedule' %}active{% endif %}">
+                    <i class="bi bi-calendar-week"></i>
+                    <span>Расписание</span>
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="/admin-dashboard/homework/" class="sidebar-link">
+                    <i class="bi bi-journal-text"></i>
+                    <span>Домашние задания</span>
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a class="sidebar-link {% if 'group-grades' in request.path %}active{% endif %}" 
+                href="{% url 'group_grades_overview' %}">
+                    <i class="bi bi-graph-up"></i>
+                    <span>Оценки по группам</span>
+                </a>
+            </li>
+
+            <li class="sidebar-item">
+                <a class="sidebar-link {% if 'teachers/overview' in request.path %}active{% endif %}" 
+                href="{% url 'teachers_overview' %}">
+                    <i class="bi bi-person-badge"></i>
+                    <span>Обзор учителей</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+    
+    <div class="sidebar-section">
+        <h3 class="sidebar-title">Система</h3>
+        <ul class="sidebar-menu">
+            <li class="sidebar-item">
+                <a href="/admin-dashboard/backup/" class="sidebar-link">
+                    <i class="bi bi-hdd"></i>
+                    <span>Резервные копии</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</aside>

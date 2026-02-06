@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Предметы учителя - MPTed{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "includes/sidebar.html" %}
+    
+    <main class="main-content">
+        <div class="content-header">
+            <div class="header-left">
+                <h1 class="content-title">Управление предметами</h1>
+                <p class="content-subtitle">
+                    {{ teacher_user.last_name }} {{ teacher_user.first_name }} {{ profile.patronymic }}
+                </p>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'teacher_detail' teacher_user.id %}" class="btn btn-outline">
+                    <i class="bi bi-arrow-left"></i>
+                    Назад к профилю
+                </a>
+                <a href="{% url 'teachers_list' %}" class="btn btn-outline">
+                    Все учителя
+                </a>
+            </div>
+        </div>
+        
+        <div class="grid-layout">
+            <!-- Текущие предметы -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Преподаваемые предметы</h3>
+                    <span class="badge">{{ teacher_subjects|length }}</span>
+                </div>
+                <div class="card-body">
+                    {% if teacher_subjects %}
+                    <div class="subjects-grid">
+                        {% for ts in teacher_subjects %}
+                        <div class="subject-card">
+                            <div class="subject-header">
+                                <h4>{{ ts.subject.name }}</h4>
+                                <form method="post" class="inline-form" 
+                                      onsubmit="return confirm('Удалить предмет у учителя?')">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="remove">
+                                    <input type="hidden" name="subject_id" value="{{ ts.subject.id }}">
+                                    <button type="submit" class="btn-icon danger small">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                            {% if ts.subject.description %}
+                            <p class="subject-description">{{ ts.subject.description|truncatechars:100 }}</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="empty-state small">
+                        <i class="bi bi-book" style="font-size: 2rem; opacity: 0.3;"></i>
+                        <p>У учителя нет назначенных предметов</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Доступные предметы -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Доступные предметы</h3>
+                    <span class="badge">{{ available_subjects|length }}</span>
+                </div>
+                <div class="card-body">
+                    {% if available_subjects %}
+                    <div class="available-subjects">
+                        {% for subject in available_subjects %}
+                        <div class="available-subject">
+                            <div class="subject-info">
+                                <h4>{{ subject.name }}</h4>
+                                {% if subject.description %}
+                                <p class="subject-description">{{ subject.description|truncatechars:80 }}</p>
+                                {% endif %}
+                            </div>
+                            <form method="post" class="inline-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="add">
+                                <input type="hidden" name="subject_id" value="{{ subject.id }}">
+                                <button type="submit" class="btn btn-success small">
+                                    <i class="bi bi-plus"></i>
+                                    Добавить
+                                </button>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="empty-state small">
+                        <i class="bi bi-check-circle" style="font-size: 2rem; opacity: 0.3;"></i>
+                        <p>Все предметы уже назначены</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Расписание учителя -->
+            <div class="card wide">
+                <div class="card-header">
+                    <h3 class="card-title">Расписание уроков</h3>
+                    <span class="badge">{{ lesson_count }} уроков</span>
+                </div>
+                <div class="card-body">
+                    {% if schedule_lessons %}
+                    <div class="table-responsive">
+                        <table class="table small">
+                            <thead>
+                                <tr>
+                                    <th>День недели</th>
+                                    <th>Урок</th>
+                                    <th>Предмет</th>
+                                    <th>Класс</th>
+                                    <th>Кабинет</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lesson in schedule_lessons %}
+                                <tr>
+                                    <td>{{ lesson.daily_schedule.get_week_day_display }}</td>
+                                    <td>{{ lesson.lesson_number }}</td>
+                                    <td>{{ lesson.subject.name }}</td>
+                                    <td>{{ lesson.daily_schedule.student_group.name }}</td>
+                                    <td>—</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="#" class="btn-link">
+                            <i class="bi bi-calendar-week"></i>
+                            Полное расписание
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="empty-state small">
+                        <i class="bi bi-calendar" style="font-size: 2rem; opacity: 0.3;"></i>
+                        <p>Учитель не назначен на уроки</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
+

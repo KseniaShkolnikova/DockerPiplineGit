@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Обзор учителей - MPTed{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "includes/sidebar.html" %}
+    
+    <main class="main-content">
+        <!-- Заголовок -->
+        <div class="content-header">
+            <div class="header-left">
+                <h1 class="content-title">Обзор учителей</h1>
+                <p class="content-subtitle">Подробная информация обо всех учителях</p>
+            </div>
+            <div class="header-right">
+                <form method="GET" class="d-flex">
+                    <input type="text" name="search" class="form-control me-2" 
+                           placeholder="Поиск учителей..." value="{{ search_query }}">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Статистика -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon primary">
+                        <i class="bi bi-people"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ total_teachers }}</div>
+                <div class="stat-label">Всего учителей</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon success">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ active_teachers }}</div>
+                <div class="stat-label">Активных</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon warning">
+                        <i class="bi bi-book"></i>
+                    </div>
+                </div>
+                <div class="stat-value">
+                    {% with total=0 %}
+                        {% for teacher in teachers_info %}
+                            {% with total=total|add:teacher.subject_count %}
+                            {% endwith %}
+                        {% endfor %}
+                        {{ total }}
+                    {% endwith %}
+                </div>
+                <div class="stat-label">Предметов всего</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon info">
+                        <i class="bi bi-journal-text"></i>
+                    </div>
+                </div>
+                <div class="stat-value">
+                    {% with total=0 %}
+                        {% for teacher in teachers_info %}
+                            {% with total=total|add:teacher.grades_total %}
+                            {% endwith %}
+                        {% endfor %}
+                        {{ total }}
+                    {% endwith %}
+                </div>
+                <div class="stat-label">Оценок выставлено</div>
+            </div>
+        </div>
+
+        <!-- Популярные предметы -->
+        {% if subject_stats %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Популярные предметы</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for stat in subject_stats %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card border">
+                            <div class="card-body">
+                                <h6 class="card-title">{{ stat.name }}</h6>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted">{{ stat.teacher_count }} учителей</span>
+                                    <span class="badge bg-primary">{{ stat.teacher_count }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Таблица учителей -->
+        <div class="card">
+            <div class="card-body p-0">
+                {% if teachers_info %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Учитель</th>
+                                <th>Контакты</th>
+                                <th>Предметы</th>
+                                <th>Классы</th>
+                                <th>Оценки</th>
+                                <th>Статистика</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for teacher in teachers_info %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="user-avatar me-3">
+                                            {{ teacher.user.username|first|upper }}
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-0">{{ teacher.user.get_full_name }}</h6>
+                                            <small class="text-muted">
+                                                {{ teacher.patronymic }} • {{ teacher.qualification }}
+                                            </small>
+                                            <div>
+                                                {% if teacher.user.is_active %}
+                                                <span class="badge bg-success">Активен</span>
+                                                {% else %}
+                                                <span class="badge bg-danger">Неактивен</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="contact-info">
+                                        <div><i class="bi bi-envelope"></i> {{ teacher.user.email|default:"-" }}</div>
+                                        <div><i class="bi bi-telephone"></i> {{ teacher.phone|default:"-" }}</div>
+                                        {% if teacher.birth_date %}
+                                        <div><i class="bi bi-calendar"></i> {{ teacher.birth_date|date:"d.m.Y" }}</div>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="subject-list">
+                                        {% for ts in teacher.subjects|slice:":3" %}
+                                        <span class="badge bg-light text-dark mb-1">{{ ts.subject.name }}</span>
+                                        {% endfor %}
+                                        {% if teacher.subjects|length > 3 %}
+                                        <span class="badge bg-secondary">+{{ teacher.subjects|length|add:"-3" }}</span>
+                                        {% endif %}
+                                        <div class="text-muted small mt-1">Всего: {{ teacher.subject_count }}</div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="group-list">
+                                        {% for group in teacher.teaching_groups|slice:":2" %}
+                                        <div class="mb-1">
+                                            <small>{{ group.name }} ({{ group.year }})</small>
+                                        </div>
+                                        {% endfor %}
+                                        {% if teacher.teaching_groups|length > 2 %}
+                                        <small class="text-muted">+{{ teacher.teaching_groups|length|add:"-2" }} еще</small>
+                                        {% endif %}
+                                        <div class="text-muted small mt-1">Всего: {{ teacher.group_count }}</div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="grades-info">
+                                        <div class="mb-1">
+                                            <span class="badge bg-info">{{ teacher.grades_total }}</span>
+                                            <small class="text-muted">оценок</small>
+                                        </div>
+                                        {% if teacher.grades_avg > 0 %}
+                                        <div>
+                                            <span class="badge 
+                                                {% if teacher.grades_avg >= 4.5 %}bg-success
+                                                {% elif teacher.grades_avg >= 3.5 %}bg-warning text-dark
+                                                {% else %}bg-danger{% endif %}">
+                                                {{ teacher.grades_avg }}
+                                            </span>
+                                            <small class="text-muted">средний балл</small>
+                                        </div>
+                                        {% endif %}
+                                        {% if teacher.grades_latest %}
+                                        <div class="text-muted small mt-1">
+                                            Последняя: {{ teacher.grades_latest|date:"d.m.Y" }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="teacher-stats">
+                                        <div class="mb-1">
+                                            <i class="bi bi-person"></i>
+                                            <small>{{ teacher.unique_students }} учеников</small>
+                                        </div>
+                                        <div class="mb-1">
+                                            <i class="bi bi-clock"></i>
+                                            <small>{{ teacher.lesson_count }} уроков в неделю</small>
+                                        </div>
+                                        <div>
+                                            <i class="bi bi-calendar-event"></i>
+                                            {% if teacher.user.date_joined %}
+                                            <small>С {{ teacher.user.date_joined|date:"d.m.Y" }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="{% url 'teacher_full_detail' teacher.id %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-info-circle"></i> Подробно
+                                        </a>
+                                        <a href="{% url 'teacher_edit' teacher.id %}" 
+                                           class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-person-x" style="font-size: 3rem; color: #dee2e6;"></i>
+                    <h5 class="mt-3">Учители не найдены</h5>
+                    <p class="text-muted">Попробуйте изменить параметры поиска</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+}
+.stat-icon.primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.stat-icon.success { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); }
+.stat-icon.warning { background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); }
+.stat-icon.info { background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%); }
+.contact-info div {
+    margin-bottom: 0.25rem;
+    font-size: 0.85rem;
+}
+.subject-list, .group-list, .grades-info, .teacher-stats {
+    font-size: 0.85rem;
+}
+</style>
+{% endblock %}

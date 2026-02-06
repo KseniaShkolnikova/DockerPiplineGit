@@ -1,0 +1,456 @@
+<!-- teacher_portal/templates/teacher_portal/student_detail.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ student.get_full_name }} - Ученик - MPTed{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem;
+        transition: all 0.2s;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .grade-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+    
+    .grade-5 { background-color: #28a745; color: white; }
+    .grade-4 { background-color: #17a2b8; color: white; }
+    .grade-3 { background-color: #ffc107; color: #212529; }
+    .grade-2 { background-color: #fd7e14; color: white; }
+    .grade-1 { background-color: #dc3545; color: white; }
+    
+    .attendance-status {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+    }
+    
+    .status-present { background-color: #28a745; }
+    .status-absent { background-color: #dc3545; }
+    .status-late { background-color: #ffc107; }
+    
+    .timeline {
+        border-left: 2px solid var(--border);
+        margin-left: 20px;
+        padding-left: 20px;
+    }
+    
+    .timeline-item {
+        position: relative;
+        margin-bottom: 1.5rem;
+    }
+    
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -30px;
+        top: 4px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--primary);
+        border: 2px solid white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "teacher_portal/_sidebar.html" %}
+
+    <main class="main-content">
+        <!-- Шапка -->
+        <div class="content-header mb-4">
+            <div class="header-left">
+                <div class="d-flex align-items-center gap-3">
+                    {% if student_profile.profile_image %}
+                    <img src="{{ student_profile.profile_image.url }}" 
+                         alt="{{ student.get_full_name }}" 
+                         class="rounded-circle" 
+                         style="width: 64px; height: 64px; object-fit: cover;">
+                    {% else %}
+                    <div class="user-avatar student" style="width: 64px; height: 64px; font-size: 1.5rem;">
+                        {{ student.first_name|first|upper }}{{ student.last_name|first|upper }}
+                    </div>
+                    {% endif %}
+                    <div>
+                        <h1 class="content-title">{{ student.get_full_name }}</h1>
+                        <p class="content-subtitle">{{ student_profile.patronymic }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'teacher_portal:students' %}" class="btn btn-outline">
+                    <i class="bi bi-arrow-left"></i>
+                    Назад к списку
+                </a>
+                <a href="{% url 'teacher_portal:add_grade' %}?student={{ student.id }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i>
+                    Выставить оценку
+                </a>
+            </div>
+        </div>
+
+        <!-- Основная информация -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Основная информация</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td style="width: 40%;"><strong>Класс:</strong></td>
+                                <td>{{ student_profile.student_group.name|default:"Не указан" }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Курс:</strong></td>
+                                <td>{{ student_profile.course }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Дата рождения:</strong></td>
+                                <td>{{ student_profile.birth_date|date:"d.m.Y"|default:"Не указана" }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td style="width: 40%;"><strong>Телефон:</strong></td>
+                                <td>{{ student_profile.phone|default:"Не указан" }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Адрес:</strong></td>
+                                <td>{{ student_profile.address|default:"Не указан"|linebreaksbr }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Статистика -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <!-- Средний балл -->
+            <div class="stat-card text-center">
+                <div class="text-3xl font-bold 
+                    {% if grade_stats.average >= 4.5 %}text-success
+                    {% elif grade_stats.average >= 3.5 %}text-info
+                    {% elif grade_stats.average >= 2.5 %}text-warning
+                    {% else %}text-danger{% endif %}">
+                    {{ grade_stats.average|floatformat:1|default:"0.0" }}
+                </div>
+                <div class="text-sm text-muted">Средний балл</div>
+                <div class="mt-2 text-xs">
+                    Всего оценок: {{ grade_stats.total|default:"0" }}
+                </div>
+            </div>
+
+            <!-- Посещаемость -->
+            <div class="stat-card text-center">
+                <div class="text-3xl font-bold 
+                    {% if attendance_stats.present_percentage >= 90 %}text-success
+                    {% elif attendance_stats.present_percentage >= 70 %}text-info
+                    {% elif attendance_stats.present_percentage >= 50 %}text-warning
+                    {% else %}text-danger{% endif %}">
+                    {{ attendance_stats.present_percentage|floatformat:1|default:"0" }}%
+                </div>
+                <div class="text-sm text-muted">Посещаемость</div>
+                <div class="mt-2 d-flex justify-content-center gap-2">
+                    <span class="badge bg-success">{{ attendance_stats.present|default:"0" }} пр.</span>
+                    <span class="badge bg-danger">{{ attendance_stats.absent|default:"0" }} от.</span>
+                    <span class="badge bg-warning">{{ attendance_stats.late|default:"0" }} оп.</span>
+                </div>
+            </div>
+
+            <!-- Распределение оценок -->
+            <div class="stat-card text-center">
+                <div class="text-3xl font-bold text-primary">{{ grade_stats.excellent|default:"0" }}</div>
+                <div class="text-sm text-muted">Отличных оценок</div>
+                <div class="mt-2">
+                    <span class="badge bg-info">{{ grade_stats.good|default:"0" }} хор.</span>
+                    <span class="badge bg-warning">{{ grade_stats.satisfactory|default:"0" }} уд.</span>
+                </div>
+            </div>
+
+            <!-- Сданные работы -->
+            <div class="stat-card text-center">
+                <div class="text-3xl font-bold text-warning">{{ homework_submissions|length }}</div>
+                <div class="text-sm text-muted">Сданных работ</div>
+                <div class="mt-2">
+                    {% if homework_submissions %}
+                    <div class="text-xs">Последняя: {{ homework_submissions.0.submitted_at|date:"d.m.Y" }}</div>
+                    {% else %}
+                    <div class="text-xs">Нет сданных работ</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Последние оценки -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-award me-2"></i>Последние оценки</h5>
+                        <a href="{% url 'teacher_portal:grades' %}?student={{ student.id }}" class="btn btn-sm btn-outline">
+                            Все оценки
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        {% if grades %}
+                        <div class="timeline">
+                            {% for grade in grades %}
+                            <div class="timeline-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                            <span class="grade-badge grade-{{ grade.value|floatformat:0 }}">
+                                                {{ grade.value }}
+                                            </span>
+                                            <span class="font-semibold">{{ grade.subject.name }}</span>
+                                            <span class="badge bg-secondary">{{ grade.get_grade_type_display }}</span>
+                                        </div>
+                                        {% if grade.comment %}
+                                        <p class="text-muted mb-1">{{ grade.comment }}</p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="text-sm text-muted">{{ grade.date|date:"d.m.Y" }}</div>
+                                        <div class="text-xs text-muted">{{ grade.teacher.get_full_name }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-3">
+                            <i class="bi bi-journal-x text-muted" style="font-size: 2rem;"></i>
+                            <p class="mt-2">Нет оценок</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Посещаемость -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Посещаемость</h5>
+                        <a href="{% url 'teacher_portal:attendance' %}?student={{ student.id }}" class="btn btn-sm btn-outline">
+                            Все записи
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        {% if attendance %}
+                        <div class="timeline">
+                            {% for record in attendance %}
+                            <div class="timeline-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                            <span class="attendance-status 
+                                                {% if record.status == 'P' %}status-present
+                                                {% elif record.status == 'A' %}status-absent
+                                                {% else %}status-late{% endif %}"></span>
+                                            <span class="font-semibold">{{ record.schedule_lesson.subject.name }}</span>
+                                            <span class="badge bg-secondary">{{ record.schedule_lesson.lesson_number }} урок</span>
+                                        </div>
+                                        <div class="text-muted">{{ record.schedule_lesson.daily_schedule.student_group.name }}</div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="text-sm text-muted">{{ record.date|date:"d.m.Y" }}</div>
+                                        <div class="text-xs font-semibold
+                                            {% if record.status == 'P' %}text-success
+                                            {% elif record.status == 'A' %}text-danger
+                                            {% else %}text-warning{% endif %}">
+                                            {{ record.get_status_display }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-3">
+                            <i class="bi bi-calendar-x text-muted" style="font-size: 2rem;"></i>
+                            <p class="mt-2">Нет записей о посещаемости</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Сданные работы -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-journal-text me-2"></i>Сданные домашние задания</h5>
+            </div>
+            <div class="card-body">
+                {% if homework_submissions %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Задание</th>
+                                <th>Предмет</th>
+                                <th>Дата сдачи</th>
+                                <th>Статус</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for submission in homework_submissions %}
+                            <tr>
+                                <td>
+                                    <div class="font-semibold">{{ submission.homework.title }}</div>
+                                    {% if submission.submission_text %}
+                                    <div class="text-sm text-muted">{{ submission.submission_text|truncatechars:100 }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>{{ submission.homework.schedule_lesson.subject.name }}</td>
+                                <td>{{ submission.submitted_at|date:"d.m.Y H:i" }}</td>
+                                <td>
+                                    {% if submission.grade %}
+                                    <span class="badge bg-success">
+                                        Оценка: {{ submission.grade.value }}
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-warning">На проверке</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        {% if submission.submission_file %}
+                                        <a href="{{ submission.submission_file.url }}" 
+                                           target="_blank" 
+                                           class="btn btn-outline"
+                                           title="Скачать работу">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                        {% endif %}
+                                        {% if not submission.grade %}
+                                        <button class="btn btn-primary"
+                                                onclick="gradeSubmission({{ submission.id }})"
+                                                title="Выставить оценку">
+                                            <i class="bi bi-check-circle"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="bi bi-journal-x text-muted" style="font-size: 2rem;"></i>
+                    <p class="mt-2">Нет сданных домашних заданий</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Быстрые действия -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Быстрые действия</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{% url 'teacher_portal:add_grade' %}?student={{ student.id }}" 
+                       class="btn btn-outline-primary">
+                        <i class="bi bi-plus-circle"></i>
+                        Выставить оценку
+                    </a>
+                    <a href="{% url 'teacher_portal:attendance' %}?student={{ student.id }}" 
+                       class="btn btn-outline-info">
+                        <i class="bi bi-calendar-check"></i>
+                        Отметить посещаемость
+                    </a>
+                    
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Модальное окно для выставления оценки -->
+<div class="modal fade" id="gradeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Выставить оценку</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="gradeForm" method="post" action="">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Оценка</label>
+                        <div class="btn-group w-100" role="group">
+                            {% for i in "12345" %}
+                            <input type="radio" class="btn-check" name="value" id="grade{{ i }}" value="{{ i }}" required>
+                            <label class="btn btn-outline-primary" for="grade{{ i }}">{{ i }}</label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Комментарий</label>
+                        <textarea name="comment" class="form-control" rows="3" placeholder="Опциональный комментарий"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="submit" form="gradeForm" class="btn btn-primary">Сохранить оценку</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function gradeSubmission(submissionId) {
+    const form = document.getElementById('gradeForm');
+    form.action = `/teacher/submissions/${submissionId}/grade/`;
+    
+    const modal = new bootstrap.Modal(document.getElementById('gradeModal'));
+    modal.show();
+}
+
+
+
+// Автоматическое закрытие сообщений
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        });
+    }, 5000);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Расписание - MPTed{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "student/_sidebar.html" %}
+
+    <main class="main-content">
+        <div class="content-header mb-4">
+            <div>
+                <h1 class="content-title">Расписание занятий</h1>
+                <p class="content-subtitle">{{ student_profile.student_group.name|default:"Не в классе" }}</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                {% if weekly_schedule %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>День недели</th>
+                                    <th>№</th>
+                                    <th>Предмет</th>
+                                    <th>Учитель</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for day in weekly_schedule %}
+                                    {% for lesson in day.lessons %}
+                                    <tr>
+                                        {% if forloop.first %}
+                                        <td rowspan="{{ day.lessons|length }}" class="font-semibold align-middle">
+                                            {{ day.day_name }}
+                                            {% if day.is_weekend %}
+                                                <span class="badge bg-warning-light text-warning ml-2">Выходной</span>
+                                            {% endif %}
+                                        </td>
+                                        {% endif %}
+                                        <td>{{ lesson.lesson_number }}</td>
+                                        <td>{{ lesson.subject.name }}</td>
+                                        <td>{{ lesson.teacher.get_full_name }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td>{{ day.day_name }}</td>
+                                        <td colspan="3" class="text-muted text-center">Нет уроков</td>
+                                    </tr>
+                                    {% endfor %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="bi bi-calendar-x"></i>
+                        <h3>Расписание не найдено</h3>
+                        <p>Расписание для вашего класса еще не составлено</p>
+                        {% if not student_profile.student_group %}
+                            <p class="text-danger">Вы не привязаны к учебному классу</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

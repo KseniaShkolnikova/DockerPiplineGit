@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Админ панель - MPTed{% endblock %}
+
+
+{% block content %}
+<!-- Основной контейнер -->
+<div class="admin-container">
+    <!-- Подключаем сайдбар -->
+    {% include "includes/sidebar.html" %}
+    
+    <!-- Основной контент -->
+    <main class="main-content">
+        <div class="content-header">
+            <h1 class="content-title">Обзор системы</h1>
+            <p class="content-subtitle">Добро пожаловать в панель управления MPTed System</p>
+        </div>
+        
+        <!-- Статистика -->
+        <div class="stats-grid">
+            <!-- Статистика пользователей -->
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon users">
+                        <i class="bi bi-people"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ total_users }}</div>
+                <div class="stat-label">Всего пользователей</div>
+            </div>
+            
+            <!-- Статистика классов -->
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon groups">
+                        <i class="bi bi-collection"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ total_groups }}</div>
+                <div class="stat-label">Классов</div>
+            </div>
+            
+            <!-- Статистика предметов -->
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon subjects">
+                        <i class="bi bi-book"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ total_subjects }}</div>
+                <div class="stat-label">Предметов</div>
+            </div>
+            
+            <!-- Статистика домашних заданий -->
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon homework">
+                        <i class="bi bi-journal-text"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ active_homework }}</div>
+                <div class="stat-label">Активных заданий</div>
+            </div>
+        </div>
+        
+        <!-- Последние пользователи -->
+        <div class="table-container">
+            <div class="table-header">
+                <h3 class="table-title">Последние пользователи</h3>
+                
+            </div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Пользователь</th>
+                        <th>Роль</th>
+                        <th>Email</th>
+                        <th>Дата регистрации</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in recent_users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <div class="user-avatar">
+                                    {{ user.username|first|upper }}
+                                </div>
+                                <div>
+                                    <div class="user-name">{{ user.username }}</div>
+                                    <div class="user-extra">
+                                        {{ user.first_name }} {{ user.last_name }}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge {% if user.role == 'admin' or user.role == 'superadmin' %}admin{% elif user.role == 'teacher' %}teacher{% elif user.role == 'student' %}student{% else %}teacher{% endif %}">
+                                {% if user.role == 'admin' or user.role == 'superadmin' %}
+                                    Администратор
+                                {% elif user.role == 'teacher' %}
+                                    Учитель
+                                {% elif user.role == 'student' %}
+                                    Ученик
+                                {% else %}
+                                    Пользователь
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>{{ user.email|default:"-" }}</td>
+                        <td>{{ user.date_joined|date:"d.m.Y" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 2rem;">
+                            <i class="bi bi-people" style="font-size: 2rem; opacity: 0.3; margin-bottom: 1rem; display: block;"></i>
+                            <div style="color: #64748b;">Нет пользователей</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Простой JS для любых динамических элементов
+    console.log('Админ панель загружена');
+});
+</script>
+{% endblock %}

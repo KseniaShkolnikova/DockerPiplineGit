@@ -1,0 +1,196 @@
+<!-- teacher_portal/templates/teacher_portal/announcements.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Объявления - MPTed{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "teacher_portal/_sidebar.html" %}
+
+    <main class="main-content">
+        <!-- Шапка -->
+        <div class="content-header mb-4">
+            <div class="header-left">
+                <h1 class="content-title">Объявления</h1>
+                <p class="content-subtitle">
+                    {% if page_obj %}
+                        Показано {{ page_obj.start_index }}–{{ page_obj.end_index }} из {{ page_obj.paginator.count }}
+                    {% else %}
+                        Нет объявлений
+                    {% endif %}
+                </p>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'teacher_portal:create_announcement' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i>
+                    Создать объявление
+                </a>
+            </div>
+        </div>
+
+        <!-- Фильтры -->
+        <div class="filter-card mb-4">
+            <form method="get" class="filter-form">
+                <div class="filter-row">
+                    <select name="group" class="filter-select" onchange="this.form.submit()">
+                        <option value="">Все объявления</option>
+                        <option value="all" {% if filters.group_id == 'all' %}selected{% endif %}>Общие для всех</option>
+                        {% for group in groups %}
+                        <option value="{{ group.id }}" {% if filters.group_id == group.id|stringformat:"i" %}selected{% endif %}>
+                            Для {{ group.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    
+                    <select name="status" class="filter-select" onchange="this.form.submit()">
+                        <option value="all" {% if filters.status_filter == 'all' or not filters.status_filter %}selected{% endif %}>Все</option>
+                        <option value="active" {% if filters.status_filter == 'active' %}selected{% endif %}>Активные (7 дней)</option>
+                        <option value="expired" {% if filters.status_filter == 'expired' %}selected{% endif %}>Архивные</option>
+                    </select>
+                    
+                    {% if request.GET %}
+                    <a href="{% url 'teacher_portal:announcements' %}" class="btn btn-outline">
+                        Сбросить
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+
+        <!-- Список объявлений -->
+        {% if page_obj %}
+        <div class="space-y-4">
+            {% for announcement in page_obj %}
+            <div class="card announcement-card {% if announcement.is_for_all %}for-all{% endif %}">
+                <div class="card-header">
+                    <div>
+                        <h3 class="card-title mb-1">{{ announcement.title }}</h3>
+                        <div class="d-flex gap-3 text-sm text-muted">
+                            <span>
+                                <i class="bi bi-calendar"></i>
+                                {{ announcement.created_at|date:"d.m.Y H:i" }}
+                            </span>
+                            <span>
+                                <i class="bi bi-person"></i>
+                                {{ announcement.author.get_full_name }}
+                            </span>
+                            {% if announcement.student_group %}
+                            <span>
+                                <i class="bi bi-people"></i>
+                                {{ announcement.student_group.name }}
+                            </span>
+                            {% elif announcement.is_for_all %}
+                            <span>
+                                <i class="bi bi-globe"></i>
+                                Для всех классов
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button type="button" 
+                                class="btn-icon"
+                                onclick="window.location.href='{% url 'teacher_portal:edit_announcement' announcement.id %}'"
+                                title="Редактировать">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <form method="post" 
+                              action="{% url 'teacher_portal:delete_announcement' announcement.id %}" 
+                              class="inline-form"
+                              onsubmit="return confirm('Удалить это объявление?')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-icon danger" title="Удалить">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="announcement-content mb-4">
+                        {{ announcement.content|linebreaks }}
+                    </div>
+                    
+                    <!-- Статистика просмотров -->
+                    <div class="announcement-meta">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="text-muted">
+                                    <i class="bi bi-clock-history"></i>
+                                    {{ announcement.created_at|timesince }} назад
+                                </span>
+                            </div>
+                            <div>
+                                <span class="badge {% if announcement.is_for_all %}bg-info{% else %}bg-primary{% endif %}">
+                                    {% if announcement.is_for_all %}
+                                        Общее
+                                    {% else %}
+                                        Классное
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Пагинация -->
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+                <a href="?page=1{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                   class="pagination-item">
+                    &laquo;
+                </a>
+                <a href="?page={{ page_obj.previous_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                   class="pagination-item">
+                    &lsaquo;
+                </a>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <span class="pagination-item active">{{ num }}</span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a href="?page={{ num }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                       class="pagination-item">
+                        {{ num }}
+                    </a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                   class="pagination-item">
+                    &rsaquo;
+                </a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                   class="pagination-item">
+                    &raquo;
+                </a>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-megaphone"></i>
+            <h3>Объявлений нет</h3>
+            <p>Вы еще не создавали объявления</p>
+            <a href="{% url 'teacher_portal:create_announcement' %}" class="btn btn-primary mt-3">
+                <i class="bi bi-plus-circle"></i>
+                Создать первое объявление
+            </a>
+        </div>
+        {% endif %}
+    </main>
+</div>
+
+<script>
+function editAnnouncement(id) {
+    // Реализовать редактирование объявления
+    alert('Редактирование объявления #' + id);
+}
+</script>
+{% endblock %}

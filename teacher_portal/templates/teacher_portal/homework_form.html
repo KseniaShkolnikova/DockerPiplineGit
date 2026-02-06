@@ -1,0 +1,317 @@
+<!-- teacher_portal/templates/teacher_portal/homework_form.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+    {% if homework %}Редактировать задание{% else %}Создать домашнее задание{% endif %} - MPTed
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "teacher_portal/_sidebar.html" %}
+
+    <main class="main-content">
+        <!-- Шапка -->
+        <div class="content-header mb-4">
+            <div>
+                <h1 class="content-title">
+                    {% if homework %}
+                        Редактировать задание
+                    {% else %}
+                        Создать домашнее задание
+                    {% endif %}
+                </h1>
+                <p class="content-subtitle">
+                    {% if homework %}
+                        Изменение задания "{{ homework.title }}"
+                    {% else %}
+                        Заполните информацию о задании
+                    {% endif %}
+                </p>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'teacher_portal:homework' %}" class="btn btn-outline">
+                    <i class="bi bi-arrow-left"></i>
+                    Назад к списку
+                </a>
+            </div>
+        </div>
+
+        <div class="form-container">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <div class="form-card">
+                    <div class="form-title">
+                        <i class="bi bi-journal-text"></i>
+                        Основная информация
+                    </div>
+                    
+                    <div class="form-grid">
+                        <!-- Название -->
+                        <div class="form-group">
+                            <label for="title">
+                                <i class="bi bi-type"></i>
+                                Название задания *
+                            </label>
+                            <input type="text" 
+                                   name="title" 
+                                   id="title" 
+                                   class="form-input" 
+                                   placeholder="Введите название задания"
+                                   value="{% if homework %}{{ homework.title }}{% else %}{{ request.POST.title|default:'' }}{% endif %}"
+                                   required>
+                            <span class="form-help">Краткое и понятное название</span>
+                        </div>
+
+                        <!-- Урок (только при создании) -->
+                        {% if not homework %}
+                        <div class="form-group">
+                            <label for="lesson">
+                                <i class="bi bi-clock"></i>
+                                Урок *
+                            </label>
+                            <select name="lesson" id="lesson" class="form-input" required>
+                                <option value="">Выберите урок</option>
+                                {% for lesson in lessons %}
+                                <option value="{{ lesson.id }}"
+                                        {% if request.POST.lesson == lesson.id|stringformat:"i" %}selected{% endif %}>
+                                    {{ lesson.daily_schedule.student_group.name }} - 
+                                    {{ lesson.subject.name }} - 
+                                    {{ lesson.lesson_number }} урок
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <span class="form-help">Урок, к которому привязано задание</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Описание -->
+                    <div class="form-group">
+                        <label for="description">
+                            <i class="bi bi-card-text"></i>
+                            Описание задания *
+                        </label>
+                        <textarea name="description" 
+                                  id="description" 
+                                  class="form-input" 
+                                  rows="4"
+                                  placeholder="Подробное описание задания, требования, критерии оценки..."
+                                  required>{% if homework %}{{ homework.description }}{% else %}{{ request.POST.description|default:'' }}{% endif %}</textarea>
+                        <span class="form-help">Можно использовать HTML-разметку</span>
+                    </div>
+                </div>
+
+                <div class="form-card">
+                    <div class="form-title">
+                        <i class="bi bi-calendar"></i>
+                        Сроки и класс
+                    </div>
+                    
+                    <div class="form-grid">
+                        <!-- Класс (только при создании) -->
+                        {% if not homework %}
+                        <div class="form-group">
+                            <label for="group">
+                                <i class="bi bi-people"></i>
+                                Класс *
+                            </label>
+                            <select name="group" id="group" class="form-input" required>
+                                <option value="">Выберите класс</option>
+                                {% for group in groups %}
+                                <option value="{{ group.id }}"
+                                        {% if request.POST.group == group.id|stringformat:"i" %}selected{% endif %}>
+                                    {{ group.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% else %}
+                        <!-- При редактировании показываем информацию о классе -->
+                        <div class="form-group">
+                            <label>
+                                <i class="bi bi-people"></i>
+                                Класс
+                            </label>
+                            <input type="text" 
+                                   class="form-input" 
+                                   value="{{ homework.student_group.name }}" 
+                                   disabled>
+                            <input type="hidden" name="group" value="{{ homework.student_group.id }}">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>
+                                <i class="bi bi-book"></i>
+                                Предмет
+                            </label>
+                            <input type="text" 
+                                   class="form-input" 
+                                   value="{{ homework.schedule_lesson.subject.name }}" 
+                                   disabled>
+                        </div>
+                        {% endif %}
+
+                        <!-- Срок сдачи -->
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="due_date">
+                                    <i class="bi bi-calendar-date"></i>
+                                    Срок сдачи *
+                                </label>
+                                <input type="date" 
+                                       name="due_date" 
+                                       id="due_date" 
+                                       class="form-input"
+                                       value="{% if homework %}{{ homework.due_date|date:'Y-m-d' }}{% else %}{{ request.POST.due_date|default:default_due_date|date:'Y-m-d' }}{% endif %}"
+                                       required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="due_time">
+                                    <i class="bi bi-clock"></i>
+                                    Время сдачи
+                                </label>
+                                <input type="time" 
+                                       name="due_time" 
+                                       id="due_time" 
+                                       class="form-input"
+                                       value="{% if homework %}{{ homework.due_date|time:'H:i' }}{% else %}{{ request.POST.due_time|default:'23:59' }}{% endif %}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-card">
+                    <div class="form-title">
+                        <i class="bi bi-paperclip"></i>
+                        Прикрепленные файлы
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="attachment">
+                            <i class="bi bi-upload"></i>
+                            {% if homework and homework.attachment %}Заменить файл задания{% else %}Файл задания{% endif %}
+                        </label>
+                        <input type="file" 
+                               name="attachment" 
+                               id="attachment" 
+                               class="form-input"
+                               accept=".pdf,.doc,.docx,.txt,.zip,.rar,.jpg,.jpeg,.png">
+                        
+                        {% if homework and homework.attachment %}
+                        <div class="mt-2">
+                            <small class="text-muted">Текущий файл:</small>
+                            <a href="{{ homework.attachment.url }}" target="_blank" class="d-block text-primary">
+                                <i class="bi bi-file-earmark"></i> {{ homework.attachment.name|slice:"20:" }}
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        <span class="form-help">Максимальный размер: 10MB. Допустимые форматы: PDF, DOC, TXT, ZIP, JPG, PNG</span>
+                    </div>
+                    
+                    <!-- Предпросмотр файла -->
+                    <div id="file-preview" class="mt-3" style="display: none;">
+                        <div class="attachment-item">
+                            <div class="attachment-icon">
+                                <i class="bi bi-file-earmark"></i>
+                            </div>
+                            <div class="attachment-info">
+                                <div class="attachment-name" id="file-name"></div>
+                                <div class="attachment-size" id="file-size"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Кнопки -->
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i>
+                        {% if homework %}Сохранить изменения{% else %}Создать задание{% endif %}
+                    </button>
+                    <a href="{% url 'teacher_portal:homework' %}" class="btn btn-outline">
+                        Отмена
+                    </a>
+                    
+                    {% if homework %}
+                    <a href="{% url 'teacher_portal:delete_homework' homework.id %}" 
+                       class="btn btn-outline text-danger ml-auto"
+                       onclick="return confirm('Удалить это задание?')">
+                        <i class="bi bi-trash"></i>
+                        Удалить
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Установить дату по умолчанию (только при создании)
+    const dueDateInput = document.getElementById('due_date');
+    if (dueDateInput && !dueDateInput.value && !{% if homework %}true{% else %}false{% endif %}) {
+        const today = new Date();
+        const nextWeek = new Date(today);
+        nextWeek.setDate(today.getDate() + 7);
+        dueDateInput.value = nextWeek.toISOString().split('T')[0];
+    }
+    
+    // Предпросмотр файла
+    const fileInput = document.getElementById('attachment');
+    const filePreview = document.getElementById('file-preview');
+    const fileName = document.getElementById('file-name');
+    const fileSize = document.getElementById('file-size');
+    
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                
+                fileName.textContent = file.name;
+                fileSize.textContent = `${fileSizeMB} MB`;
+                filePreview.style.display = 'flex';
+                
+                // Проверка размера файла
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('Файл слишком большой. Максимальный размер: 10MB');
+                    this.value = '';
+                    filePreview.style.display = 'none';
+                }
+            } else {
+                filePreview.style.display = 'none';
+            }
+        });
+    }
+    
+    // Автоматический выбор класса при выборе урока (только при создании)
+    const lessonSelect = document.getElementById('lesson');
+    const groupSelect = document.getElementById('group');
+    
+    if (lessonSelect && groupSelect) {
+        lessonSelect.addEventListener('change', function() {
+            const selectedLesson = this.options[this.selectedIndex];
+            if (selectedLesson.value) {
+                const lessonText = selectedLesson.text;
+                const groupMatch = lessonText.match(/([А-Яа-я0-9]+) -/);
+                
+                if (groupMatch) {
+                    const groupName = groupMatch[1];
+                    for (let option of groupSelect.options) {
+                        if (option.text.includes(groupName)) {
+                            option.selected = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

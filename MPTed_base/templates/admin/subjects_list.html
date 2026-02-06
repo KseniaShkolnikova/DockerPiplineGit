@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Управление предметами - Админ панель{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "includes/sidebar.html" %}
+    
+    <main class="main-content">
+        <div class="content-header">
+            <div>
+                <h1 class="content-title">Управление предметами</h1>
+                <p class="content-subtitle">Создание и управление учебными предметами</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="{% url 'subjects_list' %}" class="btn btn-primary">
+                    <i class="bi bi-list"></i> Все предметы
+                </a>
+                <a href="{% url 'subject_create' %}" class="btn btn-success">
+                    <i class="bi bi-plus-circle"></i> Добавить предмет
+                </a>
+            </div>
+        </div>
+
+        <!-- Таблица предметов -->
+        <div class="table-container">
+            <div class="table-header">
+                <h3 class="table-title">Все предметы</h3>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-muted">Всего: {{ subjects|length }}</span>
+                </div>
+            </div>
+            
+            {% if subjects %}
+            <div class="overflow-x-auto">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px; text-align: center;">№</th>
+                            <th style="min-width: 200px;">Название предмета</th>
+                            <th style="min-width: 300px;">Описание</th>
+                            <th style="width: 120px; text-align: center;">Учителей</th>
+                            <th style="width: 120px; text-align: center;">Уроков</th>
+                            <th style="width: 140px; text-align: center;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for subject in subjects %}
+                        <tr>
+                            <td style="text-align: center;">{{ forloop.counter }}</td>
+                            <td style="font-weight: 600;">{{ subject.name }}</td>
+                            <td>
+                                {% if subject.description %}
+                                <span style="color: var(--text);">{{ subject.description|truncatechars:80 }}</span>
+                                {% else %}
+                                <span style="color: var(--text-secondary); font-style: italic;">Описание отсутствует</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center; font-weight: 600;">
+                                {{ subject.teacher_count }}
+                            </td>
+                            <td style="text-align: center; font-weight: 600;">
+                                {{ subject.lesson_count }}
+                            </td>
+                            <td style="text-align: center;">
+                                <div style="display: flex; gap: 4px; justify-content: center;">
+                                    <a href="{% url 'subject_edit' subject.id %}" class="btn btn-sm btn-outline" title="Редактировать">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-danger" 
+                                            onclick="showDeleteModal('{{ subject.id }}', '{{ subject.name }}', {{ subject.teacher_count }}, {{ subject.lesson_count }})"
+                                            title="Удалить"
+                                            {% if subject.teacher_count > 0 or subject.lesson_count > 0 %}disabled{% endif %}>
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div style="padding: 3rem; text-align: center;">
+                <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--hover); color: var(--text-secondary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 1rem;">
+                    <i class="bi bi-book"></i>
+                </div>
+                <h4 style="font-size: 1.125rem; font-weight: 500; margin-bottom: 0.5rem;">Нет предметов</h4>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Добавьте первый предмет, чтобы начать работу</p>
+                <a href="{% url 'subject_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Добавить предмет
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+</div>
+
+<!-- Модальное окно подтверждения удаления -->
+<div class="modal" id="deleteModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">
+                <i class="bi bi-exclamation-triangle" style="color: var(--danger);"></i>
+                Подтверждение удаления
+            </h3>
+            <button type="button" class="modal-close" onclick="closeDeleteModal()">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div style="text-align: center; margin-bottom: 1rem;">
+                <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(220, 38, 38, 0.1); color: var(--danger); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 1rem;">
+                    <i class="bi bi-trash"></i>
+                </div>
+                <h4 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Удалить предмет?</h4>
+                <p id="deleteModalText" style="color: var(--text);">
+                    <!-- Текст будет заполнен JavaScript -->
+                </p>
+                
+                <div id="warningBlock" style="display: none; background: rgba(217, 119, 6, 0.1); border-radius: 8px; padding: 1rem; margin-top: 1.5rem; text-align: left;">
+                    <h5 style="font-weight: 500; color: var(--warning); margin-bottom: 0.5rem;">
+                        <i class="bi bi-exclamation-circle"></i> Внимание
+                    </h5>
+                    <ul id="warningList" style="font-size: 0.875rem; color: var(--warning); list-style: none; padding: 0; margin: 0;">
+                        <!-- Список будет заполнен JavaScript -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <form method="post" id="deleteForm" style="display: none;">
+                {% csrf_token %}
+            </form>
+            <button type="button" class="btn btn-outline" onclick="closeDeleteModal()">
+                <i class="bi bi-x-circle"></i> Отмена
+            </button>
+            <button type="button" class="btn btn-danger" onclick="submitDelete()" id="deleteButton">
+                <i class="bi bi-trash"></i> Удалить
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentSubjectId = null;
+
+function showDeleteModal(subjectId, subjectName, teacherCount, lessonCount) {
+    currentSubjectId = subjectId;
+    
+    const modal = document.getElementById('deleteModal');
+    const modalText = document.getElementById('deleteModalText');
+    const warningBlock = document.getElementById('warningBlock');
+    const warningList = document.getElementById('warningList');
+    const deleteButton = document.getElementById('deleteButton');
+    
+    let text = `Вы собираетесь удалить предмет <strong>"${subjectName}"</strong>.`;
+    
+    // Очищаем список предупреждений
+    warningList.innerHTML = '';
+    
+    if (teacherCount > 0 || lessonCount > 0) {
+        text += ' Этот предмет используется в системе.';
+        warningBlock.style.display = 'block';
+        
+        if (teacherCount > 0) {
+            warningList.innerHTML += `<li style="margin-bottom: 0.25rem;">• Используется ${teacherCount} учителем(ями)</li>`;
+        }
+        if (lessonCount > 0) {
+            warningList.innerHTML += `<li style="margin-bottom: 0.25rem;">• Используется в ${lessonCount} уроке(ах)</li>`;
+        }
+        warningList.innerHTML += `<li>• Удаление предмета невозможно</li>`;
+        
+        // Делаем кнопку удаления неактивной
+        deleteButton.disabled = true;
+        deleteButton.style.opacity = '0.5';
+        deleteButton.style.cursor = 'not-allowed';
+    } else {
+        warningBlock.style.display = 'block';
+        warningList.innerHTML = `
+            <li style="margin-bottom: 0.25rem;">• Предмет не используется в системе</li>
+            <li style="margin-bottom: 0.25rem;">• Удаление не повлияет на другие данные</li>
+            <li>• Действие нельзя отменить</li>
+        `;
+        
+        // Активируем кнопку удаления
+        deleteButton.disabled = false;
+        deleteButton.style.opacity = '1';
+        deleteButton.style.cursor = 'pointer';
+    }
+    
+    modalText.innerHTML = text;
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteModal');
+    modal.classList.remove('show');
+    document.body.style.overflow = '';
+    currentSubjectId = null;
+    
+    // Сбрасываем состояние кнопки
+    const deleteButton = document.getElementById('deleteButton');
+    deleteButton.disabled = false;
+    deleteButton.style.opacity = '1';
+    deleteButton.style.cursor = 'pointer';
+}
+
+function submitDelete() {
+    if (currentSubjectId) {
+        const form = document.getElementById('deleteForm');
+        form.action = `/admin-dashboard/subjects/${currentSubjectId}/delete/`;
+        form.method = 'post';
+        form.submit();
+    }
+}
+
+// Закрытие модального окна при клике вне его
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeDeleteModal();
+    }
+});
+
+// Закрытие модального окна при нажатии Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeDeleteModal();
+    }
+});
+</script>
+{% endblock %}

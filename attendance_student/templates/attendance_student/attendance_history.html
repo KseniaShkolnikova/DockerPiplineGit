@@ -1,0 +1,283 @@
+<!-- attendance_student/templates/attendance_student/attendance_history.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}История посещаемости - MPTed{% endblock %}
+
+{% block extra_css %}
+<style>
+    .subject-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        transition: all 0.3s;
+    }
+    
+    .subject-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .dark-theme .subject-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    
+    .subject-card.critical {
+        border-left: 4px solid #dc2626;
+        background: rgba(220, 38, 38, 0.02);
+    }
+    
+    .dark-theme .subject-card.critical {
+        background: rgba(220, 38, 38, 0.05);
+    }
+    
+    .subject-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .subject-name {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--text);
+    }
+    
+    .attendance-percentage {
+        font-size: 1.5rem;
+        font-weight: 700;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        min-width: 80px;
+        text-align: center;
+    }
+    
+    .percentage-high { color: #059669; }
+    .percentage-medium { color: #d97706; }
+    .percentage-low { color: #dc2626; }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .stat-box {
+        text-align: center;
+        padding: 0.75rem;
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.02);
+    }
+    
+    .dark-theme .stat-box {
+        background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 0.25rem;
+    }
+    
+    .stat-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .overall-stats {
+        background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        text-align: center;
+    }
+    
+    .overall-percentage {
+        font-size: 3rem;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 0.5rem;
+    }
+    
+    .overall-label {
+        font-size: 1.125rem;
+        opacity: 0.9;
+        margin-bottom: 1rem;
+    }
+    
+    .overall-details {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin-top: 1rem;
+    }
+    
+    .overall-detail {
+        text-align: center;
+    }
+    
+    .detail-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+    }
+    
+    .detail-label {
+        font-size: 0.875rem;
+        opacity: 0.8;
+    }
+    
+    .critical-warning {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(220, 38, 38, 0.1);
+        color: #dc2626;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        margin-top: 1rem;
+    }
+    
+    .dark-theme .critical-warning {
+        background: rgba(220, 38, 38, 0.2);
+        color: #f87171;
+    }
+    
+    .no-data {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-secondary);
+    }
+    
+    .no-data-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    @media (max-width: 768px) {
+        .subject-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        
+        .overall-details {
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "student/_sidebar.html" %}
+
+    <main class="main-content">
+        {% if not has_group %}
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="mb-4" style="font-size: 3rem; color: var(--text-secondary); opacity: 0.3;">
+                    👨‍🎓
+                </div>
+                <h2 class="mb-3">Вы не привязаны к учебной группе</h2>
+                <p class="text-muted mb-4">
+                    Для просмотра истории посещаемости необходимо быть привязанным к учебной группе.
+                </p>
+                <a href="{% url 'student_dashboard' %}" class="btn btn-primary">
+                    Вернуться на главную
+                </a>
+            </div>
+        </div>
+        {% else %}
+        <div class="content-header mb-6">
+            <div>
+                <h1 class="content-title">Посещаемость по предметам</h1>
+                <p class="content-subtitle">Статистика за последние 30 дней</p>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'attendance_student:student_attendance' %}" class="btn btn-outline">
+                    Текущие дни
+                </a>
+            </div>
+        </div>
+
+        <!-- Общая статистика -->
+        <div class="overall-stats">
+            <div class="overall-percentage">{{ overall_rate }}%</div>
+            <div class="overall-label">Общая посещаемость</div>
+            <div class="overall-details">
+                <div class="overall-detail">
+                    <div class="detail-value">{{ present_all }}</div>
+                    <div class="detail-label">Был</div>
+                </div>
+                <div class="overall-detail">
+                    <div class="detail-value">{{ total_all }}</div>
+                    <div class="detail-label">Всего уроков</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Предметы -->
+        {% if subjects_data %}
+            {% for subject in subjects_data %}
+            <div class="subject-card {% if subject.is_critical %}critical{% endif %}">
+                <div class="subject-header">
+                    <div class="subject-name">{{ subject.subject.name }}</div>
+                    <div class="attendance-percentage 
+                        {% if subject.attendance_rate >= 90 %}percentage-high
+                        {% elif subject.attendance_rate >= 80 %}percentage-medium
+                        {% else %}percentage-low{% endif %}">
+                        {{ subject.attendance_rate }}%
+                    </div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-value">{{ subject.total }}</div>
+                        <div class="stat-label">Всего уроков</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value text-success">{{ subject.present }}</div>
+                        <div class="stat-label">Был</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value text-warning">{{ subject.late }}</div>
+                        <div class="stat-label">Опоздал</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value text-danger">{{ subject.absent }}</div>
+                        <div class="stat-label">Не был</div>
+                    </div>
+                </div>
+                
+                {% if subject.is_critical %}
+                <div class="critical-warning">
+                    Посещаемость ниже 80%
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+        <div class="no-data">
+            <div class="no-data-title">Нет данных о посещаемости</div>
+            <p>За последние 30 дней нет информации о посещаемости</p>
+        </div>
+        {% endif %}
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

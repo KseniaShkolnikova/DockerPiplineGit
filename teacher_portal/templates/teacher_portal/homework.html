@@ -1,0 +1,193 @@
+<!-- teacher_portal/templates/teacher_portal/homework.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Домашние задания - MPTed{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "teacher_portal/_sidebar.html" %}
+
+    <main class="main-content">
+        <!-- Шапка -->
+        <div class="content-header mb-4">
+            <div class="header-left">
+                <h1 class="content-title">Домашние задания</h1>
+                <p class="content-subtitle">
+                    {% if page_obj %}
+                        Показано {{ page_obj.start_index }}–{{ page_obj.end_index }} из {{ page_obj.paginator.count }}
+                    {% else %}
+                        Нет заданий
+                    {% endif %}
+                </p>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'teacher_portal:create_homework' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i>
+                    Создать задание
+                </a>
+            </div>
+        </div>
+
+        <!-- Фильтры -->
+        <div class="filter-card mb-4">
+            <form method="get" class="filter-form">
+                <div class="filter-row">
+                    <select name="group" class="filter-select" onchange="this.form.submit()">
+                        <option value="">Все классы</option>
+                        {% for group in groups %}
+                        <option value="{{ group.id }}" {% if filters.group_id == group.id|stringformat:"i" %}selected{% endif %}>
+                            {{ group.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    
+                    <select name="subject" class="filter-select" onchange="this.form.submit()">
+                        <option value="">Все предметы</option>
+                        {% for subject in subjects %}
+                        <option value="{{ subject.id }}" {% if filters.subject_id == subject.id|stringformat:"i" %}selected{% endif %}>
+                            {{ subject.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    
+                    <select name="status" class="filter-select" onchange="this.form.submit()">
+                        <option value="active" {% if filters.status_filter == 'active' %}selected{% endif %}>Активные</option>
+                        <option value="overdue" {% if filters.status_filter == 'overdue' %}selected{% endif %}>Просроченные</option>
+                        <option value="all" {% if filters.status_filter == 'all' or not filters.status_filter %}selected{% endif %}>Все</option>
+                    </select>
+                    
+                    {% if request.GET %}
+                    <a href="{% url 'teacher_portal:homework' %}" class="btn btn-outline">
+                        Сбросить
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+
+        <!-- Список заданий -->
+        {% if page_obj %}
+        <div class="grid-layout">
+            {% for homework in page_obj %}
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">{{ homework.title }}</h3>
+                    <span class="badge {% if homework.due_date < today %}danger{% else %}success{% endif %}">
+                        {{ homework.due_date|date:"d.m.Y H:i" }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <p class="text-sm text-muted mb-2">{{ homework.description|truncatechars:150 }}</p>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <span class="badge bg-primary">{{ homework.student_group.name }}</span>
+                            <span class="badge bg-secondary">{{ homework.schedule_lesson.subject.name }}</span>
+                        </div>
+                        
+                        {% if homework.attachment %}
+                        <a href="{{ homework.attachment.url }}" class="btn-icon" target="_blank" title="Скачать файл">
+                            <i class="bi bi-paperclip"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Прогресс сдачи -->
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between mb-1">
+                            <small class="text-muted">Сдали: {{ homework.submission_count }} из {{ homework.total_students }}</small>
+                            <small class="text-muted">Проверено: {{ homework.graded_count }}</small>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar" 
+                                 style="width: {% widthratio homework.submission_count homework.total_students 100 %}%">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Действия -->
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'teacher_portal:homework_submissions' homework.id %}" 
+                           class="btn btn-sm btn-primary flex-1">
+                            <i class="bi bi-eye"></i>
+                            Проверить ({{ homework.submission_count }})
+                            <a href="{% url 'teacher_portal:edit_homework' homework.id %}" 
+                            class="btn btn-sm btn-outline">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        <form method="post" 
+                              action="{% url 'teacher_portal:delete_homework' homework.id %}" 
+                              class="inline-form"
+                              onsubmit="return confirm('Удалить это задание?')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline text-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Пагинация -->
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+                <a href="?page=1{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                   class="pagination-item">
+                    &laquo;
+                </a>
+                <a href="?page={{ page_obj.previous_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                   class="pagination-item">
+                    &lsaquo;
+                </a>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <span class="pagination-item active">{{ num }}</span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a href="?page={{ num }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                       class="pagination-item">
+                        {{ num }}
+                    </a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                   class="pagination-item">
+                    &rsaquo;
+                </a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                   class="pagination-item">
+                    &raquo;
+                </a>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-journal-text"></i>
+            <h3>Домашних заданий нет</h3>
+            <p>Вы еще не создавали домашние задания</p>
+            <a href="{% url 'teacher_portal:create_homework' %}" class="btn btn-primary mt-3">
+                <i class="bi bi-plus-circle"></i>
+                Создать первое задание
+            </a>
+        </div>
+        {% endif %}
+    </main>
+</div>
+
+<script>
+function editHomework(homeworkId) {
+    // Реализовать редактирование задания
+    alert('Редактирование задания #' + homeworkId);
+}
+</script>
+{% endblock %}

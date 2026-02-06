@@ -1,0 +1,413 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if student_user %}Редактирование ученика{% else %}Добавление ученика{% endif %}{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "includes/sidebar.html" %}
+    
+    <main class="main-content">
+        <div class="content-header">
+            <div>
+                <h1 class="content-title">
+                    {% if student_user %}
+                    Редактирование ученика: {{ student_user.get_full_name }}
+                    {% else %}
+                    Добавление нового ученика
+                    {% endif %}
+                </h1>
+                <p class="content-subtitle">
+                    {% if student_user %}
+                    Измените информацию об ученике
+                    {% else %}
+                    Заполните форму для добавления нового ученика
+                    {% endif %}
+                </p>
+            </div>
+            <a href="{% url 'students_list' %}" class="btn btn-outline">
+                <i class="bi bi-arrow-left"></i> Назад к списку
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Форма -->
+            <div class="lg:col-span-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Основная информация</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" id="studentForm">
+                            {% csrf_token %}
+                            
+                            <!-- Личные данные -->
+                            <div class="mb-6">
+                                <h4 class="text-lg font-medium mb-3">Личные данные</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="form-group">
+                                        <label for="last_name" class="form-label">Фамилия *</label>
+                                        <input type="text" id="last_name" name="last_name" 
+                                               class="form-control" 
+                                               value="{{ student_user.last_name|default:'' }}"
+                                               required>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="first_name" class="form-label">Имя *</label>
+                                        <input type="text" id="first_name" name="first_name" 
+                                               class="form-control" 
+                                               value="{{ student_user.first_name|default:'' }}"
+                                               required>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="patronymic" class="form-label">Отчество *</label>
+                                        <input type="text" id="patronymic" name="patronymic" 
+                                               class="form-control" 
+                                               value="{{ student_profile.patronymic|default:'' }}"
+                                               required>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="birth_date" class="form-label">Дата рождения</label>
+                                        <input type="date" id="birth_date" name="birth_date" 
+                                               class="form-control" 
+                                               value="{{ student_profile.birth_date|date:'Y-m-d'|default:'' }}">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Контактная информация -->
+                            <div class="mb-6">
+                                <h4 class="text-lg font-medium mb-3">Контактная информация</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="form-group">
+                                        <label for="email" class="form-label">Email</label>
+                                        <input type="email" id="email" name="email" 
+                                               class="form-control" 
+                                               value="{{ student_user.email|default:'' }}"
+                                               placeholder="email@example.com">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="phone" class="form-label">Телефон</label>
+                                        <input type="tel" id="phone" name="phone" 
+                                               class="form-control" 
+                                               value="{{ student_profile.phone|default:'' }}"
+                                               placeholder="+7 (999) 123-45-67">
+                                    </div>
+                                    
+                                    <div class="form-group md:col-span-2">
+                                        <label for="address" class="form-label">Адрес</label>
+                                        <input type="text" id="address" name="address" 
+                                               class="form-control" 
+                                               value="{{ student_profile.address|default:'' }}"
+                                               placeholder="Город, улица, дом, квартира">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Учебная информация -->
+                            <div class="mb-6">
+                                <h4 class="text-lg font-medium mb-3">Учебная информация</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="form-group">
+                                        <label for="course" class="form-label">Курс *</label>
+                                        <select id="course" name="course" class="form-control" required>
+                                            <option value="">Выберите курс</option>
+                                            <option value="1" {% if student_profile.course == 1 %}selected{% endif %}>1 курс</option>
+                                            <option value="2" {% if student_profile.course == 2 %}selected{% endif %}>2 курс</option>
+                                            <option value="3" {% if student_profile.course == 3 %}selected{% endif %}>3 курс</option>
+                                            <option value="4" {% if student_profile.course == 4 %}selected{% endif %}>4 курс</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="group" class="form-label">Учебная группа</label>
+                                        <select id="group" name="group" class="form-control">
+                                            <option value="">Без группы</option>
+                                            {% for group in groups %}
+                                            <option value="{{ group.id }}" 
+                                                    data-year="{{ group.year }}"
+                                                    {% if student_profile.student_group.id == group.id %}selected{% endif %}>
+                                                {{ group.name }} ({{ group.year }} курс)
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                        <div class="form-hint" id="groupHint">
+                                            Группа будет отфильтрована после выбора курса
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Учетные данные -->
+                            <div class="mb-6">
+                                <h4 class="text-lg font-medium mb-3">Учетные данные</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="form-group">
+                                        <label for="username" class="form-label">Логин *</label>
+                                        <input type="text" id="username" name="username" 
+                                               class="form-control" 
+                                               value="{{ student_user.username|default:'' }}"
+                                               required
+                                               placeholder="Уникальное имя пользователя">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="password" class="form-label">
+                                            {% if student_user %}Новый пароль{% else %}Пароль *{% endif %}
+                                        </label>
+                                        <input type="password" id="password" name="password" 
+                                               class="form-control" 
+                                               {% if not student_user %}required{% endif %}
+                                               placeholder="{% if student_user %}Оставьте пустым, чтобы не менять{% else %}Минимум 6 символов{% endif %}">
+                                        <div class="form-hint">Минимум 6 символов</div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="confirm_password" class="form-label">Подтверждение парвода</label>
+                                        <input type="password" id="confirm_password" name="confirm_password" 
+                                               class="form-control" 
+                                               {% if not student_user %}required{% endif %}
+                                               placeholder="Повторите пароль">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Статус -->
+                            <div class="mb-6">
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="is_active" name="is_active" 
+                                           class="form-checkbox mr-2" 
+                                           {% if student_user.is_active or not student_user %}checked{% endif %}>
+                                    <label for="is_active" class="form-label mb-0">Активный аккаунт</label>
+                                </div>
+                                <div class="form-hint">Если снять галочку, ученик не сможет войти в систему</div>
+                            </div>
+                            
+                            <div class="flex gap-2 mt-6">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle"></i>
+                                    {% if student_user %}Сохранить изменения{% else %}Добавить ученика{% endif %}
+                                </button>
+                                <a href="{% url 'students_list' %}" class="btn btn-outline">
+                                    Отмена
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Информация и предпросмотр -->
+            <div>
+                <!-- Правила -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title">Правила добавления</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="space-y-3">
+                            <div class="flex items-start gap-2">
+                                <i class="bi bi-info-circle text-blue-500 mt-0.5"></i>
+                                <div>
+                                    <p class="text-sm font-medium">Соответствие курса и группы</p>
+                                    <p class="text-xs text-gray-500">Ученик может быть добавлен только в группу соответствующего курса</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <i class="bi bi-info-circle text-blue-500 mt-0.5"></i>
+                                <div>
+                                    <p class="text-sm font-medium">Пример</p>
+                                    <p class="text-xs text-gray-500">Если ученик на 2 курсе, его можно добавить только в группы 2-го года обучения</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <i class="bi bi-info-circle text-blue-500 mt-0.5"></i>
+                                <div>
+                                    <p class="text-sm font-medium">Обязательные поля</p>
+                                    <p class="text-xs text-gray-500">Поля отмеченные * обязательны для заполнения</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Предварительный просмотр -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Предварительный просмотр</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="preview">
+                            <p class="text-sm text-gray-500">Заполните форму для предпросмотра</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const courseSelect = document.getElementById('course');
+    const groupSelect = document.getElementById('group');
+    const groupHint = document.getElementById('groupHint');
+    const previewDiv = document.getElementById('preview');
+    const last_name = document.getElementById('last_name');
+    const first_name = document.getElementById('first_name');
+    const patronymic = document.getElementById('patronymic');
+    
+    // Функция для фильтрации групп по курсу
+    function filterGroupsByCourse() {
+        const selectedCourse = parseInt(courseSelect.value);
+        const groupOptions = groupSelect.querySelectorAll('option');
+        
+        if (!selectedCourse) {
+            // Показываем все группы с подсказкой
+            groupOptions.forEach(option => {
+                if (option.value !== '') {
+                    option.style.display = '';
+                }
+            });
+            groupHint.textContent = 'Выберите курс для фильтрации групп';
+            updatePreview();
+            return;
+        }
+        
+        let availableGroups = 0;
+        groupOptions.forEach(option => {
+            if (option.value === '') {
+                option.style.display = '';
+                return;
+            }
+            
+            const groupYear = parseInt(option.dataset.year);
+            if (groupYear === selectedCourse) {
+                option.style.display = '';
+                availableGroups++;
+            } else {
+                option.style.display = 'none';
+            }
+        });
+        
+        // Обновляем подсказку
+        if (availableGroups > 0) {
+            groupHint.textContent = `Доступно ${availableGroups} групп для ${selectedCourse} курса`;
+            groupHint.className = 'form-hint text-success';
+        } else {
+            groupHint.textContent = `Нет доступных групп для ${selectedCourse} курса`;
+            groupHint.className = 'form-hint text-danger';
+        }
+        
+        // Обновляем предварительный просмотр
+        updatePreview();
+    }
+    
+    // Функция обновления предварительного просмотра
+    function updatePreview() {
+        const fullName = `${last_name.value || ''} ${first_name.value || ''} ${patronymic.value || ''}`.trim();
+        const selectedCourse = parseInt(courseSelect.value);
+        const selectedGroupId = groupSelect.value;
+        
+        if (!fullName && !selectedCourse) {
+            previewDiv.innerHTML = '<p class="text-sm text-gray-500">Заполните форму для предпросмотра</p>';
+            return;
+        }
+        
+        let previewHTML = '<div class="space-y-3">';
+        
+        if (fullName) {
+            previewHTML += `
+                <div>
+                    <p class="text-sm text-gray-500">ФИО:</p>
+                    <p class="text-sm font-medium">${fullName}</p>
+                </div>
+            `;
+        }
+        
+        if (selectedCourse) {
+            let selectedGroupName = 'Без группы';
+            
+            if (selectedGroupId) {
+                const selectedOption = groupSelect.querySelector(`option[value="${selectedGroupId}"]`);
+                if (selectedOption && selectedOption.style.display !== 'none') {
+                    selectedGroupName = selectedOption.textContent;
+                }
+            }
+            
+            previewHTML += `
+                <div class="space-y-1">
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">Курс:</span>
+                        <span class="text-sm font-medium">${selectedCourse} курс</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">Группа:</span>
+                        <span class="text-sm font-medium">${selectedGroupName}</span>
+                    </div>
+                </div>
+            `;
+            
+            if (selectedGroupId) {
+                const selectedOption = groupSelect.querySelector(`option[value="${selectedGroupId}"]`);
+                if (selectedOption && selectedOption.style.display === 'none') {
+                    previewHTML += `
+                        <div class="p-2 bg-red-50 border border-red-200 rounded">
+                            <p class="text-xs text-red-600">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                Выбранная группа не соответствует курсу!
+                            </p>
+                        </div>
+                    `;
+                }
+            }
+        }
+        
+        previewHTML += '</div>';
+        previewDiv.innerHTML = previewHTML;
+    }
+    
+    // Слушаем изменения в полях формы
+    courseSelect.addEventListener('change', filterGroupsByCourse);
+    groupSelect.addEventListener('change', updatePreview);
+    last_name.addEventListener('input', updatePreview);
+    first_name.addEventListener('input', updatePreview);
+    patronymic.addEventListener('input', updatePreview);
+    
+    // Инициализация при загрузке
+    if (courseSelect.value) {
+        filterGroupsByCourse();
+    }
+    updatePreview();
+    
+    // Валидация формы
+    document.getElementById('studentForm').addEventListener('submit', function(e) {
+        const selectedCourse = parseInt(courseSelect.value);
+        const selectedGroupId = groupSelect.value;
+        
+        if (selectedGroupId) {
+            const selectedOption = groupSelect.querySelector(`option[value="${selectedGroupId}"]:not([style*="display: none"])`);
+            if (!selectedOption) {
+                e.preventDefault();
+                alert('Выбранная группа не соответствует выбранному курсу. Пожалуйста, выберите группу, соответствующую курсу студента.');
+                groupSelect.focus();
+            }
+        }
+    });
+});
+</script>
+
+<style>
+.text-success {
+    color: var(--success);
+}
+
+.text-danger {
+    color: var(--danger);
+}
+</style>
+{% endblock %}

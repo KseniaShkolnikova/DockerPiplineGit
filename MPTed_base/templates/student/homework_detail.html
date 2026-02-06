@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ homework.title }} - MPTed{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "student/_sidebar.html" %}
+
+    <main class="main-content">
+        <div class="content-header mb-4">
+            <div>
+                <h1 class="content-title">{{ homework.title }}</h1>
+                <p class="content-subtitle">{{ homework.schedule_lesson.subject.name }}</p>
+            </div>
+            <div>
+                <a href="{% url 'student_homework' %}" class="btn btn-outline">
+                    <i class="bi bi-arrow-left"></i> Назад к заданиям
+                </a>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <!-- Основная информация -->
+            <div class="lg:col-span-2">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h3 class="font-semibold mb-3">Описание задания</h3>
+                        <div class="mb-4">
+                            {{ homework.description|linebreaks }}
+                        </div>
+
+                        {% if homework.attachment %}
+                        <div class="mb-4">
+                            <h4 class="font-semibold mb-2">Прикрепленные файлы</h4>
+                            <a href="{{ homework.attachment.url }}" class="btn btn-outline" target="_blank">
+                                <i class="bi bi-download"></i> Скачать файл преподавателя
+                            </a>
+                        </div>
+                        {% endif %}
+
+                        <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                            <h4 class="font-semibold mb-2">Информация о задании</h4>
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-muted">Предмет:</span>
+                                    <span class="font-semibold">{{ homework.schedule_lesson.subject.name }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-muted">Срок сдачи:</span>
+                                    <span class="font-semibold">{{ homework.due_date|date:"d.m.Y H:i" }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-muted">Опубликовано:</span>
+                                    <span>{{ homework.created_at|date:"d.m.Y H:i" }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-muted">Статус:</span>
+                                    <span class="badge {% if homework.due_date < today %}danger{% else %}success{% endif %}">
+                                        {% if homework.due_date < today %}Просрочено{% else %}Активно{% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Форма сдачи работы -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title mb-0">
+                            {% if submission %}
+                                Ваша отправка
+                            {% else %}
+                                Сдать работу
+                            {% endif %}
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        {% if submission %}
+                            <div class="mb-4">
+                                <p><strong>Отправлено:</strong> {{ submission.submitted_at|date:"d.m.Y H:i" }}</p>
+                                
+                                {% if submission.submission_text %}
+                                    <div class="mb-3">
+                                        <h5 class="font-semibold mb-2">Текст работы:</h5>
+                                        <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded">
+                                            {{ submission.submission_text|linebreaks }}
+                                        </div>
+                                    </div>
+                                {% endif %}
+                                
+                                {% if submission.submission_file %}
+                                    <div class="mb-3">
+                                        <h5 class="font-semibold mb-2">Файл:</h5>
+                                        <a href="{{ submission.submission_file.url }}" class="btn btn-outline" target="_blank">
+                                            <i class="bi bi-file-earmark"></i> Просмотреть файл
+                                        </a>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            {% if homework.due_date > today %}
+                                <div class="flex gap-2">
+                                    <form method="post" action="{% url 'delete_submission' submission.id %}" class="inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger" onclick="return confirm('Удалить отправку?')">
+                                            <i class="bi bi-trash"></i> Удалить отправку
+                                        </button>
+                                    </form>
+                                </div>
+                            {% endif %}
+                            
+                        {% else %}
+                            {% if homework.due_date > today %}
+                                <form method="post" enctype="multipart/form-data" action="{% url 'submit_homework' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="homework_id" value="{{ homework.id }}">
+                                    
+                                    <div class="mb-3">
+                                        <label for="submission_text" class="form-label">Текст работы:</label>
+                                        <textarea id="submission_text" name="submission_text" class="form-control" rows="6" placeholder="Введите текст работы..."></textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="submission_file" class="form-label">Или загрузите файл:</label>
+                                        <input type="file" id="submission_file" name="submission_file" class="form-control">
+                                        <small class="form-hint">Максимальный размер файла: 10MB</small>
+                                    </div>
+                                    
+                                    <div class="flex gap-2">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-upload"></i> Сдать работу
+                                        </button>
+                                    </div>
+                                </form>
+                            {% else %}
+                                <div class="alert alert-danger">
+                                    <i class="bi bi-exclamation-circle"></i>
+                                    Срок сдачи истек. Вы не можете сдать это задание.
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Боковая панель -->
+            <div>
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title mb-0">Дополнительно</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="space-y-3">
+                            <div>
+                                <p class="text-muted mb-1">Учитель:</p>
+                                <p class="font-semibold">{{ homework.schedule_lesson.teacher.get_full_name }}</p>
+                            </div>
+                            
+                            {% if homework.due_date > today %}
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i>
+                                    <small>Осталось времени: {{ homework.due_date|timeuntil }}</small>
+                                </div>
+                            {% endif %}
+                            
+                            <div>
+                                <p class="text-muted mb-1">Статус:</p>
+                                {% if submission %}
+                                    <span class="badge success">
+                                        <i class="bi bi-check-circle"></i> Сдано
+                                    </span>
+                                    <small class="d-block text-muted mt-1">{{ submission.submitted_at|date:"d.m.Y H:i" }}</small>
+                                {% elif homework.due_date < today %}
+                                    <span class="badge danger">
+                                        <i class="bi bi-exclamation-circle"></i> Просрочено
+                                    </span>
+                                {% else %}
+                                    <span class="badge warning">
+                                        <i class="bi bi-clock"></i> Не сдано
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Добавляем обработчик для формы
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form[action*="submit_homework"]');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const textarea = this.querySelector('#submission_text');
+            const fileInput = this.querySelector('#submission_file');
+            
+            // Проверяем, что хоть что-то заполнено
+            if (!textarea.value.trim() && !fileInput.files.length) {
+                e.preventDefault();
+                alert('Заполните текст работы или загрузите файл');
+                return false;
+            }
+            
+            // Проверяем размер файла
+            if (fileInput.files.length) {
+                const fileSize = fileInput.files[0].size;
+                const maxSize = 10 * 1024 * 1024; // 10MB
+                
+                if (fileSize > maxSize) {
+                    e.preventDefault();
+                    alert('Файл слишком большой. Максимальный размер: 10MB');
+                    return false;
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

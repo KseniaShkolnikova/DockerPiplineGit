@@ -1,0 +1,228 @@
+<!-- teacher_portal/templates/teacher_portal/grade_form.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if grade %}Редактировать оценку{% else %}Выставить оценку{% endif %} - MPTed{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "teacher_portal/_sidebar.html" %}
+
+    <main class="main-content">
+        <!-- Шапка -->
+        <div class="content-header mb-4">
+            <div>
+                <h1 class="content-title">
+                    {% if grade %}
+                        Редактировать оценку
+                    {% else %}
+                        Выставить оценку
+                    {% endif %}
+                </h1>
+                <p class="content-subtitle">
+                    {% if grade %}
+                        Для {{ grade.student.get_full_name }}
+                    {% else %}
+                        Выставление новой оценки
+                    {% endif %}
+                </p>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'teacher_portal:grades' %}" class="btn btn-outline">
+                    <i class="bi bi-arrow-left"></i>
+                    Назад к списку
+                </a>
+            </div>
+        </div>
+
+        <div class="form-container">
+            <div class="form-card">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="form-grid">
+                        <!-- Ученик -->
+                        <div class="form-group">
+                            <label for="student">
+                                <i class="bi bi-person"></i>
+                                Ученик
+                            </label>
+                            {% if grade %}
+                                <input type="text" 
+                                       class="form-control" 
+                                       value="{{ grade.student.get_full_name }}" 
+                                       disabled>
+                                <input type="hidden" name="student" value="{{ grade.student.id }}">
+                            {% else %}
+                                <select name="student" id="student" class="form-control" required>
+                                    <option value="">Выберите ученика</option>
+                                    {% for student in students %}
+                                    <option value="{{ student.id }}" 
+                                            {% if request.POST.student == student.id|stringformat:"i" %}selected{% endif %}>
+                                        {{ student.get_full_name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            {% endif %}
+                        </div>
+
+                        <!-- Предмет -->
+                        <div class="form-group">
+                            <label for="subject">
+                                <i class="bi bi-book"></i>
+                                Предмет
+                            </label>
+                            {% if grade %}
+                                <input type="text" 
+                                       class="form-control" 
+                                       value="{{ grade.subject.name }}" 
+                                       disabled>
+                                <input type="hidden" name="subject" value="{{ grade.subject.id }}">
+                            {% else %}
+                                <select name="subject" id="subject" class="form-control" required>
+                                    <option value="">Выберите предмет</option>
+                                    {% for subject in subjects %}
+                                    <option value="{{ subject.id }}"
+                                            {% if request.POST.subject == subject.id|stringformat:"i" %}selected{% endif %}>
+                                        {{ subject.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            {% endif %}
+                        </div>
+
+                        <!-- Оценка -->
+                        <div class="form-group">
+                            <label for="value">
+                                <i class="bi bi-star"></i>
+                                Оценка
+                            </label>
+                            <select name="value" id="value" class="form-control" required>
+                                <option value="">Выберите оценку</option>
+                                <option value="5" {% if request.POST.value == "5" or grade.value == 5 %}selected{% endif %}>5 - Отлично</option>
+                                <option value="4" {% if request.POST.value == "4" or grade.value == 4 %}selected{% endif %}>4 - Хорошо</option>
+                                <option value="3" {% if request.POST.value == "3" or grade.value == 3 %}selected{% endif %}>3 - Удовлетворительно</option>
+                                <option value="2" {% if request.POST.value == "2" or grade.value == 2 %}selected{% endif %}>2 - Неудовлетворительно</option>
+                            </select>
+                        </div>
+
+                        <!-- Тип оценки -->
+                        <div class="form-group">
+                            <label for="grade_type">
+                                <i class="bi bi-tag"></i>
+                                Тип оценки
+                            </label>
+                            <select name="grade_type" id="grade_type" class="form-control" required>
+                                <option value="">Выберите тип</option>
+                                {% for type_code, type_name in grade_types %}
+                                <option value="{{ type_code }}"
+                                        {% if request.POST.grade_type == type_code or grade.grade_type == type_code %}selected{% endif %}>
+                                    {{ type_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Дата -->
+                        <div class="form-group">
+                            <label for="date">
+                                <i class="bi bi-calendar"></i>
+                                Дата
+                            </label>
+                            <input type="date" 
+                                   name="date" 
+                                   id="date" 
+                                   class="form-control" 
+                                   value="{% if request.POST.date %}{{ request.POST.date }}{% elif grade %}{{ grade.date|date:'Y-m-d' }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}"
+                                   required>
+                        </div>
+
+                        <!-- Урок (опционально) -->
+                        <div class="form-group">
+                            <label for="lesson">
+                                <i class="bi bi-clock"></i>
+                                Урок (необязательно)
+                            </label>
+                            <select name="lesson" id="lesson" class="form-control">
+                                <option value="">Не привязывать к уроку</option>
+                                {% for lesson in recent_lessons %}
+                                <option value="{{ lesson.id }}"
+                                        {% if request.POST.lesson == lesson.id|stringformat:"i" or grade.schedule_lesson.id == lesson.id %}selected{% endif %}>
+                                    {{ lesson.daily_schedule.student_group.name }} - 
+                                    {{ lesson.lesson_number }} урок - 
+                                    {{ lesson.subject.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Комментарий -->
+                    <div class="form-group">
+                        <label for="comment">
+                            <i class="bi bi-chat-text"></i>
+                            Комментарий (необязательно)
+                        </label>
+                        <textarea name="comment" 
+                                  id="comment" 
+                                  class="form-control" 
+                                  rows="3"
+                                  placeholder="Дополнительный комментарий к оценке...">{% if request.POST.comment %}{{ request.POST.comment }}{% elif grade %}{{ grade.comment }}{% endif %}</textarea>
+                    </div>
+
+                    <!-- Кнопки -->
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i>
+                            {% if grade %}Сохранить изменения{% else %}Выставить оценку{% endif %}
+                        </button>
+                        <a href="{% url 'teacher_portal:grades' %}" class="btn btn-outline">
+                            Отмена
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Последние уроки -->
+            {% if not grade and recent_lessons %}
+            <div class="form-card">
+                <div class="form-title">
+                    <i class="bi bi-clock-history"></i>
+                    Последние уроки
+                </div>
+                <div class="space-y-2">
+                    {% for lesson in recent_lessons %}
+                    <div class="p-3 border rounded">
+                        <div class="d-flex justify-content-between mb-1">
+                            <strong>{{ lesson.subject.name }}</strong>
+                            <small class="text-muted">{{ lesson.lesson_number }} урок</small>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">{{ lesson.daily_schedule.student_group.name }}</small>
+                            <small class="text-muted">{{ lesson.daily_schedule.date|date:"d.m.Y" }}</small>
+                        </div>
+                        <button type="button" 
+                                class="btn btn-sm btn-outline mt-2"
+                                onclick="document.getElementById('lesson').value='{{ lesson.id }}'">
+                            Выбрать этот урок
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Устанавливаем сегодняшнюю дату по умолчанию
+    const dateInput = document.getElementById('date');
+    if (dateInput && !dateInput.value) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.value = today;
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,402 @@
+<!-- teacher_portal/templates/teacher_portal/attendance.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Посещаемость - MPTed{% endblock %}
+
+{% block extra_css %}
+<style>
+    .attendance-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .attendance-table th {
+        background: var(--card);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .attendance-status {
+        width: 60px;
+        text-align: center;
+        padding: 0.5rem;
+    }
+    
+    .status-select {
+        width: 100%;
+        padding: 0.5rem;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text);
+        cursor: pointer;
+        font-size: 0.875rem;
+    }
+    .status-select {
+    width: 100%;
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.status-select:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.status-select.selected {
+    border: 2px solid;
+    font-weight: bold;
+}
+
+.status-present { 
+    background-color: rgba(40, 167, 69, 0.1); 
+    color: #28a745; 
+}
+.status-present.selected {
+    border-color: #28a745;
+    background-color: rgba(40, 167, 69, 0.2);
+}
+
+.status-late { 
+    background-color: rgba(255, 193, 7, 0.1); 
+    color: #d97706; 
+}
+.status-late.selected {
+    border-color: #d97706;
+    background-color: rgba(255, 193, 7, 0.2);
+}
+
+.status-absent { 
+    background-color: rgba(220, 53, 69, 0.1); 
+    color: #dc3545; 
+}
+.status-absent.selected {
+    border-color: #dc3545;
+    background-color: rgba(220, 53, 69, 0.2);
+}
+
+/* Стили для бейджей */
+.badge.success {
+    background-color: #d1fae5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.badge.warning {
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.badge.danger {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+    
+    .status-present { background-color: rgba(40, 167, 69, 0.1); color: #28a745; }
+    .status-absent { background-color: rgba(220, 53, 69, 0.1); color: #dc3545; }
+    .status-late { background-color: rgba(255, 193, 7, 0.1); color: #d97706; }
+    
+    .save-btn {
+        position: sticky;
+        bottom: 20px;
+        z-index: 100;
+        margin-top: 2rem;
+    }
+    
+    .lesson-header {
+        background: rgba(124, 58, 237, 0.05);
+        font-weight: 600;
+        color: var(--text);
+    }
+    
+    .student-name {
+        font-weight: 500;
+        color: var(--text);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "teacher_portal/_sidebar.html" %}
+
+    <main class="main-content">
+        <!-- Шапка -->
+        <div class="content-header mb-4">
+            <div class="header-left">
+                <h1 class="content-title">Посещаемость</h1>
+                <p class="content-subtitle">{{ selected_date|date:"d E Y" }}</p>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'teacher_portal:attendance' %}" class="btn btn-primary">
+                    <i class="bi bi-calendar-check"></i>
+                    Сегодня
+                </a>
+            </div>
+        </div>
+
+        <!-- Фильтры -->
+        <div class="filter-card mb-4">
+            <form method="get" class="filter-form">
+                <div class="filter-row">
+                    <input type="date" 
+                           name="date" 
+                           class="form-control" 
+                           style="width: 180px;"
+                           value="{{ selected_date|date:'Y-m-d' }}"
+                           onchange="this.form.submit()">
+                    
+                    <select name="group" class="filter-select" onchange="this.form.submit()">
+                        <option value="">Все классы</option>
+                        {% for group in groups %}
+                        <option value="{{ group.id }}" {% if filters.group_id == group.id|stringformat:"i" %}selected{% endif %}>
+                            {{ group.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    
+                    <select name="subject" class="filter-select" onchange="this.form.submit()">
+                        <option value="">Все предметы</option>
+                        {% for subject in subjects %}
+                        <option value="{{ subject.id }}" {% if filters.subject_id == subject.id|stringformat:"i" %}selected{% endif %}>
+                            {{ subject.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    
+                    {% if request.GET %}
+                    <a href="{% url 'teacher_portal:attendance' %}" class="btn btn-outline">
+                        Сбросить
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+
+        {% if attendance_data %}
+            <form id="attendance-form">
+                {% csrf_token %}  <!-- ДОБАВЬТЕ ЭТУ СТРОКУ! -->
+                <input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d' }}">
+                
+                {% for data in attendance_data %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title mb-0">
+                            {{ data.lesson.lesson_number }} урок • {{ data.lesson.subject.name }} • {{ data.lesson.daily_schedule.student_group.name }}
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <input type="hidden" name="lesson_id" value="{{ data.lesson.id }}">
+                        
+                        <div class="table-responsive">
+                            <table class="attendance-table">
+                                <thead>
+                                    <tr>
+                                        <th width="40%">Ученик</th>
+                                        <th width="20%">Статус</th>
+                                        <th width="20%">Присутствовал</th>
+                                        <th width="20%">Опоздал</th>
+                                        <th width="20%">Отсутствовал</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for student_data in data.students %}
+                                        <tr>
+                                            <td>
+                                                <div class="student-name">{{ student_data.student.get_full_name }}</div>
+                                                <small class="text-muted">{{ student_data.profile.patronymic }}</small>
+                                            </td>
+                                            <td class="attendance-status">
+                                                {% if student_data.attendance %}
+                                                    {% if student_data.status == 'P' %}
+                                                        <span class="badge success">Присутствовал</span>
+                                                    {% elif student_data.status == 'L' %}
+                                                        <span class="badge warning">Опоздал</span>
+                                                    {% elif student_data.status == 'A' %}
+                                                        <span class="badge danger">Отсутствовал</span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Не отмечен</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="attendance-status">
+                                                <label>
+                                                    <input type="radio" 
+                                                        name="attendance_{{ data.lesson.id }}_{{ student_data.student.id }}" 
+                                                        value="P" 
+                                                        {% if student_data.status == 'P' %}checked{% endif %}
+                                                        class="attendance-radio d-none"
+                                                        data-lesson-id="{{ data.lesson.id }}"
+                                                        data-student-id="{{ student_data.student.id }}"
+                                                        onchange="saveAttendanceStatus(this)">
+                                                    <div class="status-select status-present {% if student_data.status == 'P' %}selected{% endif %}">
+                                                        ✓
+                                                    </div>
+                                                </label>
+                                            </td>
+                                            <td class="attendance-status">
+                                                <label>
+                                                    <input type="radio" 
+                                                        name="attendance_{{ data.lesson.id }}_{{ student_data.student.id }}" 
+                                                        value="L" 
+                                                        {% if student_data.status == 'L' %}checked{% endif %}
+                                                        class="attendance-radio d-none"
+                                                        data-lesson-id="{{ data.lesson.id }}"
+                                                        data-student-id="{{ student_data.student.id }}"
+                                                        onchange="saveAttendanceStatus(this)">
+                                                    <div class="status-select status-late {% if student_data.status == 'L' %}selected{% endif %}">
+                                                        ⌚
+                                                    </div>
+                                                </label>
+                                            </td>
+                                            <td class="attendance-status">
+                                                <label>
+                                                    <input type="radio" 
+                                                        name="attendance_{{ data.lesson.id }}_{{ student_data.student.id }}" 
+                                                        value="A" 
+                                                        {% if student_data.status == 'A' %}checked{% endif %}
+                                                        class="attendance-radio d-none"
+                                                        data-lesson-id="{{ data.lesson.id }}"
+                                                        data-student-id="{{ student_data.student.id }}"
+                                                        onchange="saveAttendanceStatus(this)">
+                                                    <div class="status-select status-absent {% if student_data.status == 'A' %}selected{% endif %}">
+                                                        ✗
+                                                    </div>
+                                                </label>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+
+                
+            </form>
+        {% else %}
+            <div class="empty-state">
+                <i class="bi bi-calendar-x"></i>
+                <h3>Нет уроков на этот день</h3>
+                <p>По выбранным фильтрам нет уроков или сегодня выходной</p>
+                <a href="{% url 'teacher_portal:attendance' %}" class="btn btn-primary mt-3">
+                    <i class="bi bi-calendar-check"></i>
+                    Посмотреть на сегодня
+                </a>
+            </div>
+        {% endif %}
+    </main>
+</div>
+<script>
+// Функция для получения CSRF токена
+function getCSRFToken() {
+    const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    return csrfInput ? csrfInput.value : '';
+}
+
+// Сохранение статуса посещаемости при клике
+function saveAttendanceStatus(radioElement) {
+    const lessonId = radioElement.dataset.lessonId;
+    const studentId = radioElement.dataset.studentId;
+    const status = radioElement.value;
+    const date = document.querySelector('input[name="date"]').value;
+    
+    console.log(`Сохранение: урок ${lessonId}, студент ${studentId}, статус ${status}, дата ${date}`);
+    
+    // Обновляем визуальное выделение
+    const row = radioElement.closest('tr');
+    row.querySelectorAll('.status-select').forEach(s => {
+        s.classList.remove('selected');
+    });
+    radioElement.nextElementSibling.classList.add('selected');
+    
+    // Обновляем бейдж статуса
+    updateStatusBadge(row, status);
+    
+    // Отправляем на сервер
+    const data = {
+        date: date,
+        attendance: {
+            [lessonId]: {
+                [studentId]: status
+            }
+        }
+    };
+    
+    fetch('/teacher/attendance/save/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (!result.success) {
+            console.error('Ошибка сохранения:', result.error);
+            // Возвращаем предыдущий статус при ошибке
+            // Можно добавить уведомление об ошибке если нужно
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка сети:', error);
+    });
+}
+
+// Обновление бейджа статуса
+function updateStatusBadge(row, status) {
+    const badgeCell = row.querySelector('td:nth-child(2)');
+    let badgeHtml = '';
+    
+    switch(status) {
+        case 'P':
+            badgeHtml = '<span class="badge success">Присутствовал</span>';
+            break;
+        case 'L':
+            badgeHtml = '<span class="badge warning">Опоздал</span>';
+            break;
+        case 'A':
+            badgeHtml = '<span class="badge danger">Отсутствовал</span>';
+            break;
+        default:
+            badgeHtml = '<span class="badge bg-secondary">Не отмечен</span>';
+    }
+    
+    badgeCell.innerHTML = badgeHtml;
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Убираем кнопку сохранения если она есть
+    const saveButton = document.querySelector('.save-btn');
+    if (saveButton) {
+        saveButton.remove();
+    }
+    
+    // Обработка кликов по статусам
+    document.querySelectorAll('.status-select').forEach(select => {
+        select.addEventListener('click', function() {
+            const radio = this.previousElementSibling;
+            if (radio) {
+                radio.checked = true;
+                radio.dispatchEvent(new Event('change'));
+            }
+        });
+    });
+    
+    console.log('Система посещаемости готова (автосохранение)');
+});
+</script>
+{% endblock %}

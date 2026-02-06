@@ -1,0 +1,398 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ student_user.get_full_name }} - Детальная информация{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "includes/sidebar.html" %}
+    
+    <main class="main-content">
+        <!-- Шапка с информацией об ученике -->
+        <div class="content-header">
+            <div class="header-left">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="width: 64px; height: 64px; border-radius: 12px; background: var(--success); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 600;">
+                        {{ student_user.first_name|slice:":1" }}{{ student_user.last_name|slice:":1" }}
+                    </div>
+                    <div>
+                        <h1 class="content-title">{{ student_user.get_full_name }}</h1>
+                        <p class="content-subtitle">Ученик • {{ student_profile.course }} курс</p>
+                    </div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'students_list' %}" class="btn btn-outline">
+                    <i class="bi bi-arrow-left"></i> Назад
+                </a>
+                <a href="{% url 'student_edit' student_user.id %}" class="btn btn-primary">
+                    <i class="bi bi-pencil"></i> Редактировать
+                </a>
+            </div>
+        </div>
+
+        <!-- Основная информация -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Левая колонка - информация об ученике -->
+            <div class="lg:col-span-1">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Основная информация</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="space-y-4">
+                            <div>
+                                <label style="font-size: 0.875rem; color: var(--text-secondary);">Логин</label>
+                                <div style="font-weight: 500;">@{{ student_user.username }}</div>
+                            </div>
+                            
+                            {% if student_user.email %}
+                            <div>
+                                <label style="font-size: 0.875rem; color: var(--text-secondary);">Email</label>
+                                <div style="font-weight: 500;">{{ student_user.email }}</div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if student_profile.phone %}
+                            <div>
+                                <label style="font-size: 0.875rem; color: var(--text-secondary);">Телефон</label>
+                                <div style="font-weight: 500;">{{ student_profile.phone }}</div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if student_profile.birth_date %}
+                            <div>
+                                <label style="font-size: 0.875rem; color: var(--text-secondary);">Дата рождения</label>
+                                <div style="font-weight: 500;">{{ student_profile.birth_date|date:"d.m.Y" }}</div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if student_profile.address %}
+                            <div>
+                                <label style="font-size: 0.875rem; color: var(--text-secondary);">Адрес</label>
+                                <div style="font-weight: 500;">{{ student_profile.address }}</div>
+                            </div>
+                            {% endif %}
+                            
+                            <div>
+                                <label style="font-size: 0.875rem; color: var(--text-secondary);">Статус аккаунта</label>
+                                <div>
+                                    {% if student_user.is_active %}
+                                    <span class="badge success">
+                                        <i class="bi bi-check-circle"></i> Активен
+                                    </span>
+                                    {% else %}
+                                    <span class="badge danger">
+                                        <i class="bi bi-x-circle"></i> Заблокирован
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label style="font-size: 0.875rem; color: var(--text-secondary);">Дата регистрации</label>
+                                <div style="font-weight: 500;">{{ student_user.date_joined|date:"d.m.Y H:i" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Класс ученика -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Учебный класс</h3>
+                    </div>
+                    <div class="card-body">
+                        {% if student_profile.student_group %}
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                            <div style="width: 48px; height: 48px; border-radius: 8px; background: var(--info); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                                <i class="bi bi-collection"></i>
+                            </div>
+                            <div>
+                                <div style="font-size: 1.125rem; font-weight: 600;">{{ student_profile.student_group.name }}</div>
+                                <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                                    {{ student_profile.student_group.year }} курс
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% if student_profile.student_group.curator %}
+                        <div>
+                            <label style="font-size: 0.875rem; color: var(--text-secondary);">Классный руководитель</label>
+                            <div style="font-weight: 500;">{{ student_profile.student_group.curator.get_full_name }}</div>
+                        </div>
+                        {% endif %}
+                        {% else %}
+                        <div style="text-align: center; padding: 1rem;">
+                            <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--hover); color: var(--text-secondary); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; margin: 0 auto 1rem;">
+                                <i class="bi bi-collection"></i>
+                            </div>
+                            <p style="color: var(--text-secondary);">Ученик не привязан к классу</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Правая колонка - оценки и статистика -->
+            <div class="lg:col-span-2">
+                <!-- Статистика оценок -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Статистика оценок</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                            <div class="stat-card" style="padding: 1rem;">
+                                <div class="stat-value">{{ total_grades }}</div>
+                                <div class="stat-label">Всего оценок</div>
+                            </div>
+                            <div class="stat-card" style="padding: 1rem;">
+                                <div class="stat-value">{{ homework_grades }}</div>
+                                <div class="stat-label">Домашние работы</div>
+                            </div>
+                            <div class="stat-card" style="padding: 1rem;">
+                                <div class="stat-value">{{ test_grades }}</div>
+                                <div class="stat-label">Контрольные</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Оценки по предметам -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Оценки по предметам</h3>
+                    </div>
+                    <div class="card-body">
+                        {% if subject_grades %}
+                        <div style="overflow-x: auto;">
+                            <table class="table small">
+                                <thead>
+                                    <tr>
+                                        <th>Предмет</th>
+                                        <th style="width: 80px; text-align: center;">Всего оценок</th>
+                                        <th style="width: 100px; text-align: center;">Средний балл</th>
+                                        <th style="width: 100px; text-align: center;">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for subject_name, data in subject_grades.items %}
+                                    <tr>
+                                        <td>
+                                            <div style="font-weight: 500;">{{ subject_name }}</div>
+                                        </td>
+                                        <td style="text-align: center; font-weight: 600;">{{ data.grades|length }}</td>
+                                        <td style="text-align: center;">
+                                            <span style="display: inline-block; padding: 0.25rem 0.75rem; background: var(--success); color: white; border-radius: 4px; font-weight: 600;">
+                                                {{ data.average }}
+                                            </span>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <button type="button" class="btn btn-sm btn-outline" onclick="showSubjectGrades('{{ subject_name }}', {{ data.grades|length }}, {{ data.average }})">
+                                                <i class="bi bi-list"></i> Все оценки
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div style="text-align: center; padding: 2rem;">
+                            <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--hover); color: var(--text-secondary); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; margin: 0 auto 1rem;">
+                                <i class="bi bi-journal"></i>
+                            </div>
+                            <p style="color: var(--text-secondary);">У ученика пока нет оценок</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Расписание -->
+                {% if schedule_data %}
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Расписание класса</h3>
+                    </div>
+                    <div class="card-body">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
+                            {% for day_data in schedule_data %}
+                            <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                                <div style="background: var(--primary); color: white; padding: 0.75rem; font-weight: 600;">
+                                    {{ day_data.day }}
+                                </div>
+                                <div style="padding: 1rem;">
+                                    {% for lesson in day_data.lessons %}
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+                                        <div>
+                                            <div style="font-weight: 500;">{{ lesson.lesson_number }} урок</div>
+                                            <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                                                {{ lesson.subject.name }}
+                                            </div>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                                                {{ lesson.teacher.get_full_name|slice:":15" }}...
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Последние оценки -->
+                {% if recent_grades %}
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Последние оценки</h3>
+                    </div>
+                    <div class="card-body">
+                        <div style="overflow-x: auto;">
+                            <table class="table small">
+                                <thead>
+                                    <tr>
+                                        <th>Дата</th>
+                                        <th>Предмет</th>
+                                        <th style="width: 80px;">Тип</th>
+                                        <th style="width: 80px; text-align: center;">Оценка</th>
+                                        <th>Учитель</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for grade in recent_grades %}
+                                    <tr>
+                                        <td>{{ grade.date|date:"d.m.Y" }}</td>
+                                        <td>{{ grade.subject.name }}</td>
+                                        <td>
+                                            <span style="font-size: 0.75rem; padding: 0.25rem 0.5rem; background: var(--hover); border-radius: 4px;">
+                                                {{ grade.get_grade_type_display }}
+                                            </span>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <span style="display: inline-block; width: 32px; height: 32px; border-radius: 50%; background: var(--success); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600;">
+                                                {{ grade.value }}
+                                            </span>
+                                        </td>
+                                        <td>{{ grade.teacher.get_full_name }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Модальное окно для оценок по предмету -->
+<div class="modal" id="gradesModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modalSubjectName">Оценки по предмету</h3>
+            <button type="button" class="modal-close" onclick="closeGradesModal()">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div id="modalGradesContent">
+                <!-- Контент будет заполнен JavaScript -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeGradesModal()">
+                <i class="bi bi-x-circle"></i> Закрыть
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function showSubjectGrades(subjectName, gradeCount, average) {
+    const modal = document.getElementById('gradesModal');
+    const modalTitle = document.getElementById('modalSubjectName');
+    const modalContent = document.getElementById('modalGradesContent');
+    
+    modalTitle.textContent = `Оценки по предмету: ${subjectName}`;
+    
+    let html = `
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: center; gap: 2rem; margin-bottom: 1rem;">
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary);">${gradeCount}</div>
+                    <div style="font-size: 0.875rem; color: var(--text-secondary);">Всего оценок</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem; font-weight: 700; color: var(--success);">${average}</div>
+                    <div style="font-size: 0.875rem; color: var(--text-secondary);">Средний балл</div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="overflow-x: auto;">
+            <table class="table small" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Тип</th>
+                        <th style="text-align: center;">Оценка</th>
+                        <th>Учитель</th>
+                        <th>Комментарий</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    // Здесь нужно было бы подгружать реальные данные через AJAX
+    // Для примера покажем заглушку
+    html += `
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 2rem;">
+                        <div style="color: var(--text-secondary);">
+                            <i class="bi bi-info-circle" style="font-size: 1.5rem; margin-bottom: 0.5rem; display: block;"></i>
+                            <p>Для загрузки всех оценок требуется реализация AJAX запроса</p>
+                        </div>
+                    </td>
+                </tr>
+    `;
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    modalContent.innerHTML = html;
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeGradesModal() {
+    const modal = document.getElementById('gradesModal');
+    modal.classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+// Закрытие модального окна при клике вне его
+document.getElementById('gradesModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeGradesModal();
+    }
+});
+
+// Закрытие модального окна при нажатии Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeGradesModal();
+    }
+});
+</script>
+{% endblock %}

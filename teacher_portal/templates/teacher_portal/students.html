@@ -1,0 +1,264 @@
+<!-- teacher_portal/templates/teacher_portal/students.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Ученики - MPTed{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "teacher_portal/_sidebar.html" %}
+
+    <main class="main-content">
+        <!-- Шапка -->
+        <div class="content-header mb-4">
+            <div class="header-left">
+                <h1 class="content-title">Ученики</h1>
+                <p class="content-subtitle">
+                    {% if page_obj %}
+                        Показано {{ page_obj.start_index }}–{{ page_obj.end_index }} из {{ page_obj.paginator.count }}
+                    {% else %}
+                        Нет учеников
+                    {% endif %}
+                </p>
+            </div>
+            <div class="header-actions">
+                <div class="search-box">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text" 
+                           id="search-input" 
+                           class="search-input" 
+                           placeholder="Поиск по имени..." 
+                           value="{{ filters.search_query|default:'' }}"
+                           onkeyup="searchStudents()">
+                </div>
+                
+                <select id="group-filter" class="filter-select" onchange="filterByGroup(this.value)">
+                    <option value="">Все классы</option>
+                    {% for group in groups %}
+                    <option value="{{ group.id }}" {% if filters.group_id == group.id|stringformat:"i" %}selected{% endif %}>
+                        {{ group.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Статистика -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="text-3xl font-bold text-primary">{{ page_obj.paginator.count|default:"0" }}</div>
+                    <div class="text-sm text-muted">Всего учеников</div>
+                </div>
+            </div>
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="text-3xl font-bold text-success">{{ avg_grades|floatformat:1|default:"0.0" }}</div>
+                    <div class="text-sm text-muted">Средний балл</div>
+                </div>
+            </div>
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="text-3xl font-bold text-info">{{ attendance_rate|floatformat:1|default:"0" }}%</div>
+                    <div class="text-sm text-muted">Средняя посещаемость</div>
+                </div>
+            </div>
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="text-3xl font-bold text-warning">{{ active_students|default:"0" }}</div>
+                    <div class="text-sm text-muted">Активных учеников</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Список учеников -->
+        {% if page_obj %}
+        <div class="grid-layout">
+            {% for student_profile in page_obj %}
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex align-items-center gap-3">
+                        {% if student_profile.profile_image %}
+                        <img src="{{ student_profile.profile_image.url }}" 
+                             alt="{{ student_profile.user.get_full_name }}" 
+                             class="rounded-circle" 
+                             style="width: 48px; height: 48px; object-fit: cover;">
+                        {% else %}
+                        <div class="user-avatar student">
+                            {{ student_profile.user.first_name|first|upper }}{{ student_profile.user.last_name|first|upper }}
+                        </div>
+                        {% endif %}
+                        <div>
+                            <h4 class="mb-0">{{ student_profile.user.get_full_name }}</h4>
+                            <p class="text-muted mb-0">{{ student_profile.patronymic }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Информация об ученике -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Класс:</span>
+                            <span class="font-semibold">{{ student_profile.student_group.name|default:"Не в классе" }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Курс:</span>
+                            <span class="font-semibold">{{ student_profile.course }}</span>
+                        </div>
+                        {% if student_profile.phone %}
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Телефон:</span>
+                            <span class="font-semibold">{{ student_profile.phone }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Статистика -->
+                    <div class="border-top pt-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <small class="text-muted">Средний балл:</small>
+                            <span class="badge 
+                                {% if student_profile.grade_stats.average >= 4.5 %}bg-success
+                                {% elif student_profile.grade_stats.average >= 3.5 %}bg-info
+                                {% elif student_profile.grade_stats.average >= 2.5 %}bg-warning
+                                {% else %}bg-danger{% endif %}">
+                                {{ student_profile.grade_stats.average|floatformat:1|default:"-" }}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">Посещаемость:</small>
+                            <span class="badge 
+                                {% if student_profile.attendance_stats.present_percentage >= 90 %}bg-success
+                                {% elif student_profile.attendance_stats.present_percentage >= 70 %}bg-info
+                                {% elif student_profile.attendance_stats.present_percentage >= 50 %}bg-warning
+                                {% else %}bg-danger{% endif %}">
+                                {{ student_profile.attendance_stats.present_percentage|default:"0" }}%
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Действия -->
+                    <div class="mt-3 d-flex gap-2">
+                        <a href="{% url 'teacher_portal:student_detail' student_profile.user.id %}" 
+                           class="btn btn-sm btn-primary flex-1">
+                            <i class="bi bi-eye"></i>
+                            Профиль
+                        </a>
+                        <a href="{% url 'teacher_portal:add_grade' %}?student={{ student_profile.user.id }}" 
+                           class="btn btn-sm btn-outline"
+                           title="Выставить оценку">
+                            <i class="bi bi-plus-circle"></i>
+                        </a>
+                        <a href="{% url 'teacher_portal:attendance' %}?student={{ student_profile.user.id }}" 
+                           class="btn btn-sm btn-outline"
+                           title="Посещаемость">
+                            <i class="bi bi-calendar-check"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Пагинация -->
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+                <a href="?page=1{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                   class="pagination-item">
+                    &laquo;
+                </a>
+                <a href="?page={{ page_obj.previous_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                   class="pagination-item">
+                    &lsaquo;
+                </a>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <span class="pagination-item active">{{ num }}</span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a href="?page={{ num }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                       class="pagination-item">
+                        {{ num }}
+                    </a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                   class="pagination-item">
+                    &rsaquo;
+                </a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% for key,value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                   class="pagination-item">
+                    &raquo;
+                </a>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-people"></i>
+            <h3>Учеников не найдено</h3>
+            <p>По выбранным фильтрам ученики не найдены</p>
+            {% if request.GET %}
+            <a href="{% url 'teacher_portal:students' %}" class="btn btn-primary mt-3">
+                <i class="bi bi-x-circle"></i>
+                Сбросить фильтры
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </main>
+</div>
+
+<script>
+function searchStudents() {
+    const searchInput = document.getElementById('search-input');
+    const searchValue = searchInput.value.trim();
+    
+    // Если поле поиска пустое и был поиск, сбрасываем
+    if (searchValue === '' && window.location.search.includes('search=')) {
+        window.location.href = window.location.pathname;
+        return;
+    }
+    
+    // Дебаунс поиска (ждем 500ms после последнего ввода)
+    clearTimeout(window.searchTimeout);
+    window.searchTimeout = setTimeout(() => {
+        if (searchValue.length >= 2 || searchValue === '') {
+            const url = new URL(window.location.href);
+            if (searchValue) {
+                url.searchParams.set('search', searchValue);
+            } else {
+                url.searchParams.delete('search');
+            }
+            url.searchParams.set('page', '1');
+            window.location.href = url.toString();
+        }
+    }, 500);
+}
+
+function filterByGroup(groupId) {
+    const url = new URL(window.location.href);
+    
+    if (groupId) {
+        url.searchParams.set('group', groupId);
+    } else {
+        url.searchParams.delete('group');
+    }
+    
+    url.searchParams.set('page', '1');
+    window.location.href = url.toString();
+}
+
+// Автозаполнение поиска при нажатии Enter
+document.getElementById('search-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        searchStudents();
+    }
+});
+</script>
+{% endblock %}

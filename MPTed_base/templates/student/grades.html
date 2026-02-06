@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Оценки - MPTed{% endblock %}
+
+{% block extra_css %}
+<style>
+    .grade-badge {
+        display: inline-block;
+        width: 30px;
+        height: 30px;
+        line-height: 30px;
+        text-align: center;
+        border-radius: 50%;
+        font-weight: bold;
+        margin: 2px;
+    }
+    .grade-5 { background-color: #28a745; color: white; }
+    .grade-4 { background-color: #17a2b8; color: white; }
+    .grade-3 { background-color: #ffc107; color: black; }
+    .grade-2 { background-color: #dc3545; color: white; }
+    
+    .chart-container {
+        position: relative;
+        height: 200px;
+        width: 200px;
+        margin: 0 auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "student/_sidebar.html" %}
+
+
+    <main class="main-content">
+        <div class="content-header mb-4">
+            <div>
+                <h1 class="content-title">Мои оценки</h1>
+                <p class="content-subtitle">Всего оценок: {{ total_grades }}</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <!-- Левая колонка - круговая диаграмма -->
+            <div>
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title mb-0">Статистика оценок</h3>
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="chart-container mb-3">
+                            <canvas id="gradeChart"></canvas>
+                        </div>
+                        <div class="row">
+                            {% for value, stats in grade_stats.items %}
+                            <div class="col-6 mb-2">
+                                <span class="grade-badge grade-{{ value }}">{{ value }}</span>
+                                <small>{{ stats.count }} ({{ stats.percentage }}%)</small>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Основная колонка - таблица оценок -->
+            <div class="lg:col-span-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title mb-0">Оценки по предметам</h3>
+                    </div>
+                    <div class="card-body">
+                        {% if subject_data %}
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th width="30%">Предмет</th>
+                                            <th width="50%">Оценки</th>
+                                            <th width="20%">Средний балл</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for data in subject_data %}
+                                        <tr>
+                                            <td class="font-semibold">{{ data.subject.name }}</td>
+                                            <td>
+                                                {% for grade in data.grades %}
+                                                <span class="grade-badge grade-{{ grade.value|floatformat:0 }}"
+                                                      title="{{ grade.date|date:'d.m.Y' }} - {{ grade.get_grade_type_display }}">
+                                                    {{ grade.value }}
+                                                </span>
+                                                {% endfor %}
+                                            </td>
+                                            <td>
+                                                <span class="badge {% if data.average >= 4.5 %}success{% elif data.average >= 3.5 %}warning{% else %}danger{% endif %}">
+                                                    {{ data.average }}
+                                                </span>
+                                                <small class="text-muted">({{ data.count }})</small>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="empty-state">
+                                <i class="bi bi-journal-check"></i>
+                                <h3>Нет оценок</h3>
+                                <p>Оценки еще не выставлялись</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Круговая диаграмма оценок
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('gradeChart').getContext('2d');
+    
+    // Данные для диаграммы
+    const data = {
+        labels: [
+            {% for value, stats in grade_stats.items %}'{{ value }} ({{ stats.percentage }}%)'{% if not forloop.last %}, {% endif %}{% endfor %}
+        ],
+        datasets: [{
+            data: [
+                {% for value, stats in grade_stats.items %}{{ stats.percentage }}{% if not forloop.last %}, {% endif %}{% endfor %}
+            ],
+            backgroundColor: [
+                '#dc3545', // 2 - красный
+                '#ffc107', // 3 - желтый
+                '#17a2b8', // 4 - голубой
+                '#28a745'  // 5 - зеленый
+            ],
+            borderWidth: 1
+        }]
+    };
+    
+    const config = {
+        type: 'doughnut',
+        data: data,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            return `${label}: ${value}%`;
+                        }
+                    }
+                }
+            }
+        }
+    };
+    
+    new Chart(ctx, config);
+});
+</script>
+{% endblock %}

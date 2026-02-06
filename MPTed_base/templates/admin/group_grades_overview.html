@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Оценки по группам - MPTed{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "includes/sidebar.html" %}
+    
+    <main class="main-content">
+        <!-- Заголовок -->
+        <div class="content-header">
+            <div class="header-left">
+                <h1 class="content-title">Оценки по группам</h1>
+                <p class="content-subtitle">Статистика успеваемости по учебным классам</p>
+            </div>
+        </div>
+
+        <!-- Статистика -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon primary">
+                        <i class="bi bi-collection"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ groups_stats|length }}</div>
+                <div class="stat-label">Всего групп</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon success">
+                        <i class="bi bi-people"></i>
+                    </div>
+                </div>
+                <div class="stat-value">
+                    {% with total=0 %}
+                        {% for stat in groups_stats %}
+                            {% widthratio stat.student_count 1 1 as count %}
+                            {% with total=total|add:count %}
+                            {% endwith %}
+                        {% endfor %}
+                        {{ total }}
+                    {% endwith %}
+                </div>
+                <div class="stat-label">Всего учеников</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon warning">
+                        <i class="bi bi-journal-text"></i>
+                    </div>
+                </div>
+                <div class="stat-value">
+                    {% with total=0 %}
+                        {% for stat in groups_stats %}
+                            {% widthratio stat.grades_count 1 1 as count %}
+                            {% with total=total|add:count %}
+                            {% endwith %}
+                        {% endfor %}
+                        {{ total }}
+                    {% endwith %}
+                </div>
+                <div class="stat-label">Всего оценок</div>
+            </div>
+        </div>
+
+        <!-- Таблица групп -->
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Класс</th>
+                                <th>Классный руководитель</th>
+                                <th>Учеников</th>
+                                <th>Оценок</th>
+                                <th>Средний балл</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stat in groups_stats %}
+                            <tr>
+                                <td>
+                                    <strong>{{ stat.group.name }}</strong>
+                                    <div class="text-muted small">{{ stat.group.year }} год</div>
+                                </td>
+                                <td>
+                                    {% if stat.group.curator %}
+                                    <div class="d-flex align-items-center">
+                                        <div class="user-avatar small me-2">
+                                            {{ stat.group.curator.username|first|upper }}
+                                        </div>
+                                        <div>
+                                            <div>{{ stat.group.curator.get_full_name }}</div>
+                                            <small class="text-muted">{{ stat.group.curator.username }}</small>
+                                        </div>
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted">Не назначен</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark">
+                                        {{ stat.student_count }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">
+                                        {{ stat.grades_count }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if stat.avg_grade > 0 %}
+                                    <span class="badge {% if stat.avg_grade >= 4.5 %}bg-success
+                                        {% elif stat.avg_grade >= 3.5 %}bg-warning text-dark
+                                        {% else %}bg-danger{% endif %}">
+                                        {{ stat.avg_grade }}
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Нет данных</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'group_grades_detail' stat.group.id %}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-graph-up"></i> Статистика
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <i class="bi bi-journal-x" style="font-size: 2rem; color: #dee2e6;"></i>
+                                    <p class="text-muted mt-2">Нет данных о группах</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+.user-avatar.small {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+}
+.stat-icon.primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.stat-icon.success { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); }
+.stat-icon.warning { background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); }
+</style>
+{% endblock %}

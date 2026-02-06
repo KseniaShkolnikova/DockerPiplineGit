@@ -1,0 +1,290 @@
+<!-- teacher_portal/templates/teacher_portal/dashboard.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Панель учителя - MPTed{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "teacher_portal/_sidebar.html" %}
+
+    <main class="main-content">
+        <!-- Шапка -->
+        <div class="content-header mb-4">
+            <div>
+                <h1 class="content-title">Добро пожаловать, {{ user.first_name }}!</h1>
+                <p class="content-subtitle">
+                    {% if teacher_info.profile %}
+                        {{ teacher_info.profile.qualification|default:"Учитель" }}
+                    {% else %}
+                        Учитель
+                    {% endif %}
+                </p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted">{{ today|date:"d E Y" }}</span>
+            </div>
+        </div>
+
+        <!-- Статистика -->
+        <div class="stats-grid mb-4">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-value">{{ stats.total_students }}</div>
+                        <div class="stat-label">Всего учеников</div>
+                    </div>
+                    <div class="stat-icon users">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-value">{{ stats.today_grades }}</div>
+                        <div class="stat-label">Оценок сегодня</div>
+                    </div>
+                    <div class="stat-icon subjects">
+                        <i class="bi bi-journal-check"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-value">{{ stats.today_attendance }}</div>
+                        <div class="stat-label">Посещаемость</div>
+                    </div>
+                    <div class="stat-icon groups">
+                        <i class="bi bi-calendar-check"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-value">{{ stats.pending_submissions }}</div>
+                        <div class="stat-label">Работ на проверку</div>
+                    </div>
+                    <div class="stat-icon homework">
+                        <i class="bi bi-journal-text"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Быстрые действия -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="card-title mb-0">Быстрые действия</h2>
+            </div>
+            <div class="card-body">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <a href="{% url 'teacher_portal:add_grade' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i>
+                        Выставить оценку
+                    </a>
+                    <a href="{% url 'teacher_portal:attendance' %}" class="btn btn-success">
+                        <i class="bi bi-calendar-check"></i>
+                        Отметить посещаемость
+                    </a>
+                    <a href="{% url 'teacher_portal:create_homework' %}" class="btn btn-warning">
+                        <i class="bi bi-journal-plus"></i>
+                        Создать ДЗ
+                    </a>
+                    <a href="{% url 'teacher_portal:create_announcement' %}" class="btn btn-info">
+                        <i class="bi bi-megaphone"></i>
+                        Создать объявление
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Основной контент в две колонки -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <!-- Левая колонка -->
+            <div class="lg:col-span-2">
+                <!-- Расписание на сегодня -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h2 class="card-title mb-0">Расписание на сегодня</h2>
+                        <span class="text-muted">{{ today|date:"d.m.Y" }}</span>
+                    </div>
+                    <div class="card-body">
+                        {% if today_schedule %}
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>№</th>
+                                            <th>Время</th>
+                                            <th>Предмет</th>
+                                            <th>Класс</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for lesson in today_schedule %}
+                                        <tr>
+                                            <td>{{ lesson.lesson_number }}</td>
+                                            <td>
+                                                {% with hour=lesson.lesson_number|add:7 %}
+                                                    {{ hour }}:00 - {{ hour }}:45
+                                                {% endwith %}
+                                            </td>
+                                            <td>{{ lesson.subject.name }}</td>
+                                            <td>{{ lesson.daily_schedule.student_group.name }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="empty-state small">
+                                <i class="bi bi-calendar-x"></i>
+                                <h4>Нет уроков на сегодня</h4>
+                                <p>Сегодня выходной или нет расписания</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Ближайшие домашние задания -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h2 class="card-title mb-0">Ближайшие задания</h2>
+                        <a href="{% url 'teacher_portal:homework' %}" class="btn-link">Все задания</a>
+                    </div>
+                    <div class="card-body">
+                        {% if upcoming_homework %}
+                            <div class="space-y-3">
+                                {% for hw in upcoming_homework %}
+                                <div class="p-3 border rounded" 
+                                     onclick="window.location.href='{% url 'teacher_portal:homework_submissions' hw.id %}'"
+                                     style="cursor: pointer; transition: all 0.2s;">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <strong>{{ hw.title }}</strong>
+                                        <small class="text-muted">{{ hw.due_date|date:"d.m.Y H:i" }}</small>
+                                    </div>
+                                    <p class="mb-1 text-sm">{{ hw.description|truncatechars:60 }}</p>
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-muted">{{ hw.student_group.name }}</small>
+                                        <small class="text-muted">{{ hw.schedule_lesson.subject.name }}</small>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="empty-state small">
+                                <i class="bi bi-journal-text"></i>
+                                <h4>Нет активных заданий</h4>
+                                <p>Все задания проверены или срок еще не наступил</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Правая колонка -->
+            <div>
+                <!-- Мои классы -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h2 class="card-title mb-0">Мои классы</h2>
+                    </div>
+                    <div class="card-body">
+                        {% if teacher_info.all_groups %}
+                            <div class="space-y-3">
+                                {% for group in teacher_info.all_groups %}
+                                <div class="d-flex justify-content-between align-items-center p-2 border rounded">
+                                    <div>
+                                        <strong>{{ group.name }}</strong>
+                                        <div class="text-sm text-muted">
+                                            {{ group.year }} год
+                                            {% if group.curator == user %}
+                                                <span class="badge bg-primary ml-2">Кл.рук.</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <a href="{% url 'teacher_portal:students' %}?group={{ group.id }}" 
+                                       class="btn btn-sm btn-outline">
+                                        Ученики
+                                    </a>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="empty-state small">
+                                <i class="bi bi-people"></i>
+                                <h4>Нет классов</h4>
+                                <p>Вы не привязаны к классам</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Мои предметы -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h2 class="card-title mb-0">Мои предметы</h2>
+                    </div>
+                    <div class="card-body">
+                        {% if teacher_info.subjects %}
+                            <div class="subjects-list">
+                                {% for subject in teacher_info.subjects %}
+                                <span class="subject-tag">{{ subject.name }}</span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="empty-state small">
+                                <i class="bi bi-book"></i>
+                                <h4>Нет предметов</h4>
+                                <p>Вам не назначены предметы</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Последние объявления -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h2 class="card-title mb-0">Последние объявления</h2>
+                        <a href="{% url 'teacher_portal:announcements' %}" class="btn-link">Все</a>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_announcements %}
+                            <div class="space-y-3">
+                                {% for announcement in recent_announcements %}
+                                <div class="announcement-item p-3 border rounded">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h5 class="mb-1 font-semibold">{{ announcement.title }}</h5>
+                                            <small class="text-muted">
+                                                {{ announcement.created_at|date:"d.m.Y H:i" }}
+                                            </small>
+                                        </div>
+                                        <span class="badge {% if announcement.is_for_all %}bg-info{% else %}bg-secondary{% endif %}">
+                                            {% if announcement.is_for_all %}Общее{% else %}Класс{% endif %}
+                                        </span>
+                                    </div>
+                                    <p class="mb-2 text-sm">{{ announcement.content|truncatechars:100 }}</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="empty-state small">
+                                <i class="bi bi-megaphone"></i>
+                                <h4>Нет объявлений</h4>
+                                <p>Вы еще не создавали объявления</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

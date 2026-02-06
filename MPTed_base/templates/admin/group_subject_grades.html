@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}Оценки по {{ subject.name }} - {{ group.name }} - MPTed{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "includes/sidebar.html" %}
+    
+    <main class="main-content">
+        <!-- Хлебные крошки -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="{% url 'group_grades_overview' %}">Оценки по группам</a>
+                </li>
+                <li class="breadcrumb-item">
+                    <a href="{% url 'group_grades_detail' group.id %}">{{ group.name }}</a>
+                </li>
+                <li class="breadcrumb-item active">{{ subject.name }}</li>
+            </ol>
+        </nav>
+
+        <!-- Заголовок -->
+        <div class="content-header mb-4">
+            <div class="header-left">
+                <h1 class="content-title">{{ subject.name }}</h1>
+                <p class="content-subtitle">
+                    Оценки группы {{ group.name }} • {{ group.year }} год
+                </p>
+            </div>
+            <div class="header-right">
+                <a href="{% url 'group_grades_detail' group.id %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Назад
+                </a>
+            </div>
+        </div>
+
+        <!-- Основная статистика -->
+        <div class="stats-grid mb-4">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon primary">
+                        <i class="bi bi-people"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ students_grades|length }}</div>
+                <div class="stat-label">Учеников</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon warning">
+                        <i class="bi bi-journal-text"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ total_grades }}</div>
+                <div class="stat-label">Всего оценок</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon 
+                        {% if overall_avg >= 4.5 %}success
+                        {% elif overall_avg >= 3.5 %}warning
+                        {% elif overall_avg > 0 %}danger
+                        {% else %}secondary{% endif %}">
+                        <i class="bi bi-graph-up"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ overall_avg }}</div>
+                <div class="stat-label">Средний балл</div>
+            </div>
+        </div>
+
+        <!-- Учителя и распределение оценок -->
+        <div class="row mb-4">
+            <!-- Учителя -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Учителя предмета</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if teachers %}
+                        <div class="list-group list-group-flush">
+                            {% for teacher in teachers %}
+                            <div class="list-group-item">
+                                <div class="d-flex align-items-center">
+                                    <div class="user-avatar small me-3">
+                                        {{ teacher.username|first|upper }}
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0">{{ teacher.get_full_name }}</h6>
+                                        <small class="text-muted">{{ teacher.username }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-person-x" style="font-size: 2rem; color: #dee2e6;"></i>
+                            <p class="text-muted mt-2">Учителя не назначены</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Распределение оценок -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Распределение оценок</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if grade_distribution %}
+                        <div class="grade-distribution-chart">
+                            {% for value, stat in grade_distribution.items %}
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="text-muted">Оценка {{ value }}</span>
+                                    <span class="text-dark">{{ stat.count }} ({{ stat.percentage }}%)</span>
+                                </div>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar 
+                                        {% if value == 5 %}bg-success
+                                        {% elif value == 4 %}bg-info
+                                        {% elif value == 3 %}bg-warning
+                                        {% else %}bg-danger{% endif %}" 
+                                        style="width: {{ stat.percentage }}%">
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-pie-chart" style="font-size: 2rem; color: #dee2e6;"></i>
+                            <p class="text-muted mt-2">Нет данных о распределении оценок</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Типы оценок -->
+        {% if grade_types_stats %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Типы оценок</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for stat in grade_types_stats %}
+                    <div class="col-md-3 mb-3">
+                        <div class="card border">
+                            <div class="card-body text-center">
+                                <h3 class="text-primary">{{ stat.count }}</h3>
+                                <p class="text-muted mb-1">{{ stat.name }}</p>
+                                <span class="badge {% if stat.avg >= 4.5 %}bg-success
+                                    {% elif stat.avg >= 3.5 %}bg-warning text-dark
+                                    {% else %}bg-danger{% endif %}">
+                                    Ср. балл: {{ stat.avg }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Оценки учеников -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Оценки учеников</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Ученик</th>
+                                <th>Кол-во оценок</th>
+                                <th>Средний балл</th>
+                                <th>Последние оценки</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students_grades %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="user-avatar small me-2">
+                                            {{ student.student.user.username|first|upper }}
+                                        </div>
+                                        <div>
+                                            <div class="user-name">{{ student.student.get_full_name }}</div>
+                                            <small class="text-muted">{{ student.student.user.username }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark">{{ student.grades_count }}</span>
+                                </td>
+                                <td>
+                                    {% if student.avg_grade > 0 %}
+                                    <span class="badge {% if student.avg_grade >= 4.5 %}bg-success
+                                        {% elif student.avg_grade >= 3.5 %}bg-warning text-dark
+                                        {% else %}bg-danger{% endif %}">
+                                        {{ student.avg_grade }}
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Нет оценок</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="grade-mini-list">
+                                        {% for grade in student.recent_grades %}
+                                        <span class="badge 
+                                            {% if grade.value == 5 %}bg-success
+                                            {% elif grade.value == 4 %}bg-info
+                                            {% elif grade.value == 3 %}bg-warning text-dark
+                                            {% else %}bg-danger{% endif %} me-1">
+                                            {{ grade.value }}
+                                        </span>
+                                        {% empty %}
+                                        <span class="text-muted">Нет оценок</span>
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <a href="{% url 'student_detail' student.student.user.id %}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4">
+                                    <i class="bi bi-people" style="font-size: 2rem; color: #dee2e6;"></i>
+                                    <p class="text-muted mt-2">В группе нет учеников</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+.user-avatar.small {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+}
+.stat-icon.primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.stat-icon.warning { background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); }
+.stat-icon.success { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); }
+.grade-mini-list {
+    display: flex;
+    flex-wrap: wrap;
+}
+</style>
+{% endblock %}
