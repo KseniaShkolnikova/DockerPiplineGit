@@ -1,9 +1,47 @@
 stages:
   - test
+  - validate
 
-test-job:
-  stage: test
+variables:
+  DJANGO_SETTINGS_MODULE: "project.settings"
+  VENV_PATH: ".venv"
+
+
+validation-django-settings:
+  stage: validate
+  before_script:
+    - python -m venv $VENV_PATH
+    - source $VENV_PATH/bin/activate
+    - pip install --upgrade pip
+    - pip install -r requiroments.txt
   script:
-    - echo "Начало"
-    - echo "Продолжение"
-    - echo "Конец"
+    - source $VENV_PATH/bin/activate
+    - echo "Проверка настроек джанго"
+    - python3 manage.py check
+    - echo "Настройки валидны"
+
+validation-migration:
+  stage: validate
+  before_script:
+    - python -m venv $VENV_PATH
+    - source $VENV_PATH/bin/activate
+    - pip install --upgrade pip
+    - pip install -r requiroments.txt
+  script:
+    - source $VENV_PATH/bin/activate
+    - echo "Проверка миграций"
+    - python3 manage.py makemigrations --check --dry-run
+    - echo "Миграции валидны"
+
+test-static-file:
+  stage: test
+  before_script:
+    - python -m venv $VENV_PATH
+    - source $VENV_PATH/bin/activate
+    - pip install --upgrade pip
+    - pip install -r requiroments.txt
+  script:
+    - source $VENV_PATH/bin/activate
+    - echo "Проверка static файлов"
+    - python3 manage.py collectstatic --noinput --dry-run
+    - echo "Статичный файлы проверены"
