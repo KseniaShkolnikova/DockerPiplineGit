@@ -42,8 +42,9 @@ database-connection:
     - pip install --upgrade pip
     - pip install -r requirements.txt
   script:
-    - source $VENV_PATH/bin/activate
-    - psql -U postgres -c "SELECT version();" && echo "✅ PostgreSQL работает"
+    - echo "=== ПРОВЕРКА POSTGRESQL ==="
+    - su - postgres -c "psql -c 'SELECT version();'"
+    - echo "✅ PostgreSQL работает"
 # 4. Функциональная задача 2: Сбор статических файлов
 static-files-collect:
   stage: test
