@@ -13,7 +13,7 @@ validation-django-settings:
     - python -m venv $VENV_PATH
     - source $VENV_PATH/bin/activate
     - pip install --upgrade pip
-    - pip install -r requiroments.txt
+    - pip install -r requirements.txt
   script:
     - source $VENV_PATH/bin/activate
     - echo "Проверка настроек джанго"
@@ -26,7 +26,7 @@ validation-migration:
     - python -m venv $VENV_PATH
     - source $VENV_PATH/bin/activate
     - pip install --upgrade pip
-    - pip install -r requiroments.txt
+    - pip install -r requirements.txt
   script:
     - source $VENV_PATH/bin/activate
     - echo "Проверка миграций"
@@ -39,7 +39,7 @@ test-static-file:
     - python -m venv $VENV_PATH
     - source $VENV_PATH/bin/activate
     - pip install --upgrade pip
-    - pip install -r requiroments.txt
+    - pip install -r requirements.txt
   script:
     - source $VENV_PATH/bin/activate
     - echo "Проверка static файлов"
