@@ -81,22 +81,4 @@ database-connection:
   script:
     - source $VENV_PATH/bin/activate
     - echo "=== ПРОВЕРКА ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ ==="
-    - python3 -c "
-import os
-import django
-
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'project.settings')
-django.setup()
-
-from django.db import connection
-
-print('Проверка подключения к PostgreSQL...')
-try:
-    with connection.cursor() as cursor:
-        cursor.execute('SELECT version();')
-        version = cursor.fetchone()
-        print(f'✅ Подключение успешно! Версия: {version[0]}')
-except Exception as e:
-    print(f'❌ Ошибка подключения к БД: {e}')
-    exit(1)
-"
+    - python3 -c "import os; import django; os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'project.settings'); django.setup(); from django.db import connection; print('Проверка подключения к PostgreSQL...'); cursor = connection.cursor(); cursor.execute('SELECT version();'); version = cursor.fetchone(); print('✅ Подключение успешно! Версия:', version[0])"
