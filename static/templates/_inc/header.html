@@ -31,6 +31,33 @@
                 </a>
             </div>
         
+        {% elif request.user.groups.all.0.name == 'education_department' %}
+            <!-- ПАНЕЛЬ УЧЕБНОГО ОТДЕЛА -->
+            <a href="{% url 'education_department:dashboard' %}" class="logo">
+                <i class="bi bi-mortarboard"></i>
+                Учебный отдел
+            </a>
+            
+            <div class="nav-menu">
+                
+                <a href="{% url 'schedule:schedule_dashboard' %}" class="nav-link">
+                    <i class="bi bi-calendar-week"></i>
+                    Расписание
+                </a>
+                <a href="{% url 'education_department:homework_overview' %}" class="nav-link">
+                    <i class="bi bi-journal-text"></i>
+                    Домашние задания
+                </a>
+                <a href="{% url 'education_department:group_grades_overview' %}" class="nav-link">
+                    <i class="bi bi-graph-up"></i>
+                    Оценки по группам
+                </a>
+                <a href="{% url 'education_department:teachers_overview' %}" class="nav-link">
+                    <i class="bi bi-person-badge"></i>
+                    Обзор учителей
+                </a>
+            </div>
+        
         {% elif request.user.groups.all.0.name == 'student' %}
             <!-- ПАНЕЛЬ СТУДЕНТА -->
             <a href="/student/dashboard/" class="logo">
@@ -100,16 +127,16 @@
     </div>
     
     <div class="nav-right">
-        <!-- Поиск (только для админа и учителя) -->
-        {% if request.user.is_superuser or request.user.groups.all.0.name == 'admin' or request.user.groups.all.0.name == 'teacher' %}
+        <!-- Поиск (только для админа, учебного отдела и учителя) -->
+        {% if request.user.is_superuser or request.user.groups.all.0.name == 'admin' or request.user.groups.all.0.name == 'education_department' or request.user.groups.all.0.name == 'teacher' %}
             <div class="search-box">
                 <i class="bi bi-search search-icon"></i>
                 <input type="text" class="search-input" placeholder="Поиск...">
             </div>
         {% endif %}
         
-        <!-- Уведомления (только для админа и учителя) -->
-        {% if request.user.is_superuser or request.user.groups.all.0.name == 'admin' or request.user.groups.all.0.name == 'teacher' %}
+        <!-- Уведомления (только для админа, учебного отдела и учителя) -->
+        {% if request.user.is_superuser or request.user.groups.all.0.name == 'admin' or request.user.groups.all.0.name == 'education_department' or request.user.groups.all.0.name == 'teacher' %}
             <button class="btn btn-icon" id="notificationsBtn">
                 <i class="bi bi-bell"></i>
             </button>
@@ -137,6 +164,8 @@
                             Суперпользователь
                         {% elif request.user.groups.all.0.name == 'admin' %}
                             Администратор
+                        {% elif request.user.groups.all.0.name == 'education_department' %}
+                            Учебный отдел
                         {% elif request.user.groups.all.0.name == 'teacher' %}
                             Учитель
                         {% elif request.user.groups.all.0.name == 'student' %}
@@ -158,6 +187,7 @@
                         <i class="bi bi-person"></i>
                         Мой профиль
                     </a>
+
                 {% elif request.user.is_superuser or request.user.groups.all.0.name == 'admin' %}
                     <a href="/admin-dashboard/profile/" class="dropdown-item">
                         <i class="bi bi-person"></i>
@@ -170,12 +200,13 @@
                     </a>
                 {% endif %}
                 
-                <!-- Настройки для админа -->
+                <!-- Настройки для админа и учебного отдела -->
                 {% if request.user.is_superuser or request.user.groups.all.0.name == 'admin' %}
                     <a href="/admin-dashboard/settings/" class="dropdown-item">
                         <i class="bi bi-gear"></i>
                         Настройки системы
                     </a>
+
                 {% endif %}
                 
                 <!-- Переключение темы для всех -->
@@ -342,12 +373,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 const isAdmin = document.querySelector('.logo').textContent.includes('Админ');
                 const isStudent = document.querySelector('.logo').textContent.includes('студента');
                 const isTeacher = document.querySelector('.logo').textContent.includes('учителя');
+                const isEducation = document.querySelector('.logo').textContent.includes('Учебный отдел');
                 
                 // Показываем сообщение в зависимости от роли
                 if (isAdmin) {
                     alert('Поиск в админ-панели: ' + query);
                 } else if (isTeacher) {
                     alert('Поиск для учителя: ' + query);
+                } else if (isEducation) {
+                    alert('Поиск в учебном отделе: ' + query);
                 } else {
                     alert('Поиск: ' + query);
                 }
@@ -362,11 +396,14 @@ document.addEventListener('DOMContentLoaded', function() {
             // Здесь можно добавить логику показа уведомлений
             const isAdmin = document.querySelector('.logo').textContent.includes('Админ');
             const isTeacher = document.querySelector('.logo').textContent.includes('учителя');
+            const isEducation = document.querySelector('.logo').textContent.includes('Учебный отдел');
             
             if (isAdmin) {
                 alert('Уведомления для администратора');
             } else if (isTeacher) {
                 alert('Уведомления для учителя');
+            } else if (isEducation) {
+                alert('Уведомления для учебного отдела');
             } else {
                 alert('Уведомления');
             }

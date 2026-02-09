@@ -69,8 +69,8 @@
                 <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
                         <h3 class="card-title mb-0">{{ hw.title }}</h3>
-                        <span class="badge {% if hw.id in submissions %}success{% elif hw.due_date < today %}danger{% else %}warning{% endif %}">
-                            {% if hw.id in submissions %}
+                        <span class="badge {% if hw.id in submission_dict %}success{% elif hw.due_date < today %}danger{% else %}warning{% endif %}">
+                            {% if hw.id in submission_dict %}
                                 <i class="bi bi-check-circle"></i> Сдано
                             {% elif hw.due_date < today %}
                                 <i class="bi bi-exclamation-circle"></i> Просрочено
@@ -82,7 +82,7 @@
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <p>{{ hw.description }}</p>
+                        <p>{{ hw.description|truncatechars:150 }}</p>
                     </div>
                     
                     <div class="space-y-2 mb-3">
@@ -102,28 +102,63 @@
                         </div>
                     </div>
                     
+                    <!-- Файлы от учителя -->
                     {% if hw.attachment %}
                     <div class="mb-3">
-                        <a href="{{ hw.attachment.url }}" class="btn btn-outline btn-sm" download>
-                            <i class="bi bi-download"></i> Скачать файл
-                        </a>
+                        <p class="text-muted small mb-1">Файл от учителя:</p>
+                        <div class="btn-group btn-group-sm">
+                            <a href="{% url 'view_homework_file' hw.id %}" 
+                               target="_blank" 
+                               class="btn btn-outline-primary">
+                                <i class="bi bi-eye"></i> Просмотреть
+                            </a>
+                            <a href="{% url 'view_homework_file' hw.id %}?action=download" 
+                               class="btn btn-outline-secondary">
+                                <i class="bi bi-download"></i> Скачать
+                            </a>
+                        </div>
                     </div>
                     {% endif %}
                     
+                    <!-- Файлы ученика (если сдано) -->
+                    {% if hw.id in submission_dict %}
+                        {% with submission=submission_dict.hw.id %}
+                            {% if submission.submission_file %}
+                            <div class="mb-3">
+                                <p class="text-muted small mb-1">Ваш файл:</p>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'view_submission_file' submission.id %}" 
+                                       target="_blank" 
+                                       class="btn btn-outline-success">
+                                        <i class="bi bi-eye"></i> Просмотреть
+                                    </a>
+                                    <a href="{% url 'view_submission_file' submission.id %}?action=download" 
+                                       class="btn btn-outline-success">
+                                        <i class="bi bi-download"></i> Скачать
+                                    </a>
+                                </div>
+                                <small class="text-muted d-block mt-1">
+                                    Отправлено: {{ submission.submitted_at|date:"d.m.Y H:i" }}
+                                </small>
+                            </div>
+                            {% endif %}
+                        {% endwith %}
+                    {% endif %}
+                    
                     <div class="d-flex gap-2">
-                        {% if hw.id not in submissions %}
-                            <button class="btn btn-primary btn-sm" onclick="showSubmissionForm({{ hw.id }})">
+                        {% if hw.id not in submission_dict %}
+                            <a href="{% url 'homework_detail' hw.id %}" class="btn btn-primary btn-sm">
                                 <i class="bi bi-upload"></i> Сдать работу
-                            </button>
+                            </a>
                         {% else %}
-                            <button class="btn btn-success btn-sm" disabled>
+                            <a href="{% url 'homework_detail' hw.id %}" class="btn btn-success btn-sm">
                                 <i class="bi bi-check-circle"></i> Работа сдана
-                            </button>
+                            </a>
                         {% endif %}
                         
-                        <button class="btn btn-outline btn-sm" onclick="showHomeworkDetails({{ hw.id }})">
+                        <a href="{% url 'homework_detail' hw.id %}" class="btn btn-outline btn-sm">
                             <i class="bi bi-info-circle"></i> Подробнее
-                        </button>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -170,111 +205,34 @@
         {% endif %}
     </main>
 </div>
-
-<!-- Модальное окно для сдачи работы -->
-<div id="submissionModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 class="modal-title">Сдать работу</h3>
-            <button class="modal-close" onclick="closeSubmissionForm()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form id="submissionForm" method="post" enctype="multipart/form-data">
-                {% csrf_token %}
-                <input type="hidden" id="homeworkId" name="homework_id">
-                <div class="form-group">
-                    <label for="submissionText">Текст работы:</label>
-                    <textarea id="submissionText" name="submission_text" class="form-control" rows="5" placeholder="Введите текст работы..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="submissionFile">Файл работы:</label>
-                    <input type="file" id="submissionFile" name="submission_file" class="form-control">
-                    <small class="form-hint">Максимальный размер файла: 10MB</small>
-                </div>
-            </form>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-outline" onclick="closeSubmissionForm()">Отмена</button>
-            <button type="button" class="btn btn-primary" onclick="submitHomework()">Сдать работу</button>
-        </div>
-    </div>
-</div>
-
-<!-- Модальное окно с деталями задания -->
-<div id="detailsModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 class="modal-title">Детали задания</h3>
-            <button class="modal-close" onclick="closeHomeworkDetails()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <div id="homeworkDetails"></div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-function showSubmissionForm(homeworkId) {
-    document.getElementById('homeworkId').value = homeworkId;
-    document.getElementById('submissionModal').classList.add('show');
-}
-
-function closeSubmissionForm() {
-    document.getElementById('submissionModal').classList.remove('show');
-    document.getElementById('submissionForm').reset();
-}
-
-function submitHomework() {
-    const form = document.getElementById('submissionForm');
-    const formData = new FormData(form);
+// Функция для предпросмотра файлов в модальном окне
+function previewFile(fileUrl, fileName) {
+    const modal = document.getElementById('filePreviewModal');
+    const frame = document.getElementById('filePreviewFrame');
+    const modalTitle = modal.querySelector('.modal-title');
     
-    fetch('{% url "submit_homework" %}', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Работа успешно сдана!');
-            closeSubmissionForm();
-            location.reload();
-        } else {
-            alert('Ошибка: ' + data.error);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Произошла ошибка при отправке работы');
+    modalTitle.textContent = fileName;
+    frame.src = fileUrl;
+    
+    // Показываем модальное окно
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
+// Добавляем обработчики для всех кнопок просмотра
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-preview-file]').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const fileUrl = this.href;
+            const fileName = this.dataset.filename || 'Файл';
+            previewFile(fileUrl, fileName);
+        });
     });
-}
-
-function showHomeworkDetails(homeworkId) {
-    // Здесь можно загрузить детали задания через AJAX
-    // Пока просто показываем пустое окно
-    document.getElementById('detailsModal').classList.add('show');
-}
-
-function closeHomeworkDetails() {
-    document.getElementById('detailsModal').classList.remove('show');
-}
-
-// Закрытие модальных окон по клику вне их
-window.addEventListener('click', function(event) {
-    const submissionModal = document.getElementById('submissionModal');
-    const detailsModal = document.getElementById('detailsModal');
-    
-    if (event.target === submissionModal) {
-        closeSubmissionForm();
-    }
-    
-    if (event.target === detailsModal) {
-        closeHomeworkDetails();
-    }
 });
 </script>
 {% endblock %}

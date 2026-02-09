@@ -25,5 +25,7 @@ urlpatterns = [
     path('admin-dashboard/schedule/', include('schedule.urls')),
     path('attendance/', include('attendance_student.urls')),
     path('teacher/', include('teacher_portal.urls')),
-
+    path('education/', include('education_department.urls')),
+    path('schedule/', include('schedule.urls')),
+  
 ]

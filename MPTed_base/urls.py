@@ -52,15 +52,12 @@ urlpatterns = [
     path('admin-dashboard/audit-logs/', views.audit_logs, name='audit_logs'),
     path('admin-dashboard/audit-logs/<int:log_id>/', views.audit_log_detail, name='audit_log_detail'),
     path('admin-dashboard/audit-logs/clear/', views.clear_audit_logs, name='clear_audit_logs'),
-    path('admin-dashboard/groups/grades/', views.group_grades_overview, name='group_grades_overview'),
-    path('admin-dashboard/groups/<int:group_id>/grades/', views.group_grades_detail, name='group_grades_detail'),
-    path('admin-dashboard/groups/<int:group_id>/grades/subject/<int:subject_id>/', 
-         views.group_subject_grades, name='group_subject_grades'),
+    path('homework/<int:homework_id>/view_file/', 
+         views.view_homework_file, 
+         name='view_homework_file'),
     
-    # Подробная информация об учителях
-    path('admin-dashboard/teachers/overview/', views.teachers_overview, name='teachers_overview'),
-    path('admin-dashboard/teachers/<int:teacher_id>/full/', views.teacher_full_detail, name='teacher_full_detail'),
-    path('admin-dashboard/teachers/<int:teacher_id>/subject/<int:subject_id>/performance/', 
-         views.teacher_subject_performance, name='teacher_subject_performance'),
-
+    path('submissions/<int:submission_id>/view_file/', 
+         views.view_submission_file, 
+         name='view_submission_file'),
+ 
 ]

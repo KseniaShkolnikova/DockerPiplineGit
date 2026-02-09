@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'schedule',
     'attendance_student',
     'teacher_portal',
+    'education_department',
 ]
 
 
@@ -149,3 +150,12 @@ STATICFILES_DIRS = [
 ]
 
 STATIC_ROOT = BASE_DIR / 'staticfiles' 
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'skolnikovaksenia64@gmail.com'  # Ваш реальный email
+EMAIL_HOST_PASSWORD = 'bfdq hnzl vfke jsgb'  # Пароль приложения (используйте mpted или MPTed)
+DEFAULT_FROM_EMAIL = 'skolnikovaksenia64@gmail.com'
+SERVER_EMAIL = 'skolnikovaksenia64@gmail.com'

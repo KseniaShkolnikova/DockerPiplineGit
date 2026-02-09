@@ -4,14 +4,14 @@
 
 {% block content %}
 <div class="admin-container">
-    {% include "includes/sidebar.html" %}
+    {% include "education_department/includes/education_sidebar.html" %}
     
     <main class="main-content">
         <!-- Хлебные крошки -->
         <nav aria-label="breadcrumb" class="mb-4">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item">
-                    <a href="{% url 'group_grades_overview' %}">Оценки по группам</a>
+                    <a href="{% url 'education_department:group_grades_overview' %}">Оценки по группам</a>
                 </li>
                 <li class="breadcrumb-item active">{{ group.name }}</li>
             </ol>
@@ -140,7 +140,7 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <a href="{% url 'group_subject_grades' group.id stat.subject.id %}" 
+                                    <a href="{% url 'education_department:group_subject_grades' group.id stat.subject.id %}" 
                                        class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-arrow-right"></i>
                                     </a>
@@ -263,7 +263,6 @@
                                 <th>Курс</th>
                                 <th>Телефон</th>
                                 <th>Дата рождения</th>
-                                <th>Действия</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -288,12 +287,7 @@
                                     {{ student.birth_date|date:"d.m.Y" }}
                                     {% else %}-{% endif %}
                                 </td>
-                                <td>
-                                    <a href="{% url 'student_detail' student.user.id %}" 
-                                       class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i> Профиль
-                                    </a>
-                                </td>
+
                             </tr>
                             {% empty %}
                             <tr>

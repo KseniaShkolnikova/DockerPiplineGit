@@ -51,39 +51,6 @@
     </div>
     
     <div class="sidebar-section">
-        <h3 class="sidebar-title">Учебный процесс</h3>
-        <ul class="sidebar-menu">
-            <li class="sidebar-item">
-                    <a href="{% url 'schedule_dashboard' %}" class="sidebar-link {% if request.resolver_match.app_name == 'schedule' %}active{% endif %}">
-                    <i class="bi bi-calendar-week"></i>
-                    <span>Расписание</span>
-                </a>
-            </li>
-            <li class="sidebar-item">
-                <a href="/admin-dashboard/homework/" class="sidebar-link">
-                    <i class="bi bi-journal-text"></i>
-                    <span>Домашние задания</span>
-                </a>
-            </li>
-            <li class="sidebar-item">
-                <a class="sidebar-link {% if 'group-grades' in request.path %}active{% endif %}" 
-                href="{% url 'group_grades_overview' %}">
-                    <i class="bi bi-graph-up"></i>
-                    <span>Оценки по группам</span>
-                </a>
-            </li>
-
-            <li class="sidebar-item">
-                <a class="sidebar-link {% if 'teachers/overview' in request.path %}active{% endif %}" 
-                href="{% url 'teachers_overview' %}">
-                    <i class="bi bi-person-badge"></i>
-                    <span>Обзор учителей</span>
-                </a>
-            </li>
-        </ul>
-    </div>
-    
-    <div class="sidebar-section">
         <h3 class="sidebar-title">Система</h3>
         <ul class="sidebar-menu">
             <li class="sidebar-item">

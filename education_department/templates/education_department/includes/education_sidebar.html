@@ -1,0 +1,46 @@
+<!-- Сайдбар учебного отдела -->
+<aside class="sidebar">
+    <div class="sidebar-section">
+        <h3 class="sidebar-title">Статистика</h3>
+        <ul class="sidebar-menu">
+
+            <li class="sidebar-item">
+                <a href="{% url 'education_department:group_grades_overview' %}" 
+                   class="sidebar-link {% if 'grades' in request.path %}active{% endif %}">
+                    <i class="bi bi-graph-up"></i>
+                    <span>Оценки по группам</span>
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="{% url 'education_department:teachers_overview' %}" 
+                   class="sidebar-link {% if 'teachers' in request.path %}active{% endif %}">
+                    <i class="bi bi-person-badge"></i>
+                    <span>Обзор учителей</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+    
+    <div class="sidebar-section">
+        <h3 class="sidebar-title">Учебный процесс</h3>
+        <ul class="sidebar-menu">
+            <li class="sidebar-item">
+                <a href="{% url 'schedule:schedule_dashboard' %}" 
+                   class="sidebar-link {% if 'schedule' in request.path %}active{% endif %}">
+                    <i class="bi bi-calendar-week"></i>
+                    <span>Расписание</span>
+                </a>
+            </li>
+            <li class="sidebar-item">
+                <a href="{% url 'education_department:homework_overview' %}" 
+                   class="sidebar-link {% if 'homework' in request.path %}active{% endif %}">
+                    <i class="bi bi-journal-text"></i>
+                    <span>Домашние задания</span>
+                </a>
+            </li>
+            
+        </ul>
+    </div>
+    
+    
+</aside>

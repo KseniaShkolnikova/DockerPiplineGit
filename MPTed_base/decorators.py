@@ -52,3 +52,26 @@ def student_required(view_func):
         
         return view_func(request, *args, **kwargs)
     return _wrapped_view
+
+
+def education_department_required(view_func):
+    """Декоратор для проверки прав учебного отдела"""
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            messages.error(request, 'Требуется авторизация')
+            return redirect('login_page')
+        
+        # Проверяем права - суперпользователь, админ или учебный отдел
+        is_allowed = (
+            request.user.is_superuser or 
+            request.user.groups.filter(name='admin').exists() or
+            request.user.groups.filter(name='education_department').exists()
+        )
+        
+        if not is_allowed:
+            messages.error(request, 'Доступ только для сотрудников учебного отдела')
+            return redirect('dashboard_page')
+        
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view

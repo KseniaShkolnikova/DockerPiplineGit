@@ -1,6 +1,8 @@
 from django.urls import path
 from . import views
 
+app_name = 'schedule'
+
 urlpatterns = [
     path('', views.schedule_dashboard, name='schedule_dashboard'),
     path('toggle-weekend/', views.toggle_weekend_day, name='toggle_weekend_day'),

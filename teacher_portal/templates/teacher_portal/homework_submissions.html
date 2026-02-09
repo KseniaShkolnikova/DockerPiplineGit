@@ -6,54 +6,71 @@
 
 {% block extra_css %}
 <style>
-    .submission-status {
-        width: 120px;
-        text-align: center;
+    .student-row:hover {
+        background-color: #f8f9fa;
     }
     
-    .grade-input {
-        width: 80px;
-        padding: 0.5rem;
+    .grade-badge {
+        font-size: 1.1rem;
+        padding: 0.3rem 0.8rem;
+    }
+    
+    .grade-selector {
+        display: flex;
+        gap: 5px;
+    }
+    
+    .grade-btn {
+        width: 40px;
+        height: 40px;
+        border: 2px solid #dee2e6;
         border-radius: 6px;
-        border: 1px solid var(--border);
-        background: var(--card);
-        color: var(--text);
-        text-align: center;
-        font-size: 1rem;
+        background: white;
         font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
     }
     
-    .grade-input:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    .grade-btn:hover {
+        transform: translateY(-2px);
     }
     
-    .submission-details {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 1rem;
-        margin-top: 0.5rem;
-        display: none;
+    .grade-btn.selected {
+        background: #6c757d;
+        color: white;
+        border-color: #6c757d;
     }
     
-    .submission-details.show {
-        display: block;
-    }
+    .grade-btn.poor { border-color: #dc3545; }
+    .grade-btn.satisfactory { border-color: #fd7e14; }
+    .grade-btn.good { border-color: #0d6efd; }
+    .grade-btn.excellent { border-color: #198754; }
     
-    .submission-text {
-        line-height: 1.6;
-        color: var(--text);
-        white-space: pre-wrap;
+    .submission-content {
         max-height: 300px;
         overflow-y: auto;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        margin-bottom: 1rem;
     }
     
-    .file-preview {
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px solid var(--border);
+    .file-attachment {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        background: white;
+        border-radius: 6px;
+        border: 1px solid #dee2e6;
+        text-decoration: none;
+        color: #212529;
+        transition: all 0.2s;
+    }
+    
+    .file-attachment:hover {
+        background: #f8f9fa;
+        border-color: #0d6efd;
     }
 </style>
 {% endblock %}
@@ -63,110 +80,79 @@
     {% include "teacher_portal/_sidebar.html" %}
 
     <main class="main-content">
-        <!-- Шапка -->
         <div class="content-header mb-4">
             <div class="header-left">
-                <h1 class="content-title">Проверка работ</h1>
-                <p class="content-subtitle">{{ homework.title }}</p>
-                <div class="d-flex gap-3 mt-2">
-                    <span class="badge bg-primary">{{ homework.student_group.name }}</span>
-                    <span class="badge bg-secondary">{{ homework.schedule_lesson.subject.name }}</span>
-                    <span class="badge {% if homework.due_date < today %}bg-danger{% else %}bg-success{% endif %}">
-                        Сдать до: {{ homework.due_date|date:"d.m.Y H:i" }}
-                    </span>
-                </div>
+                <h1 class="content-title">Проверка работ: {{ homework.title }}</h1>
+                <p class="content-subtitle">{{ homework.student_group.name }} • {{ homework.schedule_lesson.subject.name }}</p>
             </div>
             <div class="header-actions">
                 <a href="{% url 'teacher_portal:homework' %}" class="btn btn-outline">
-                    <i class="bi bi-arrow-left"></i>
-                    Назад к заданиям
+                    <i class="bi bi-arrow-left"></i> Назад
                 </a>
             </div>
         </div>
 
-        <!-- Описание задания -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <h4 class="mb-3">Описание задания:</h4>
-                <div class="mb-4">{{ homework.description|linebreaks }}</div>
-                
-                {% if homework.attachment %}
-                <div class="file-preview">
-                    <h5 class="mb-2">Прикрепленный файл:</h5>
-                    <a href="{{ homework.attachment.url }}" class="attachment-item" target="_blank">
-                        <div class="attachment-icon">
-                            <i class="bi bi-file-earmark-arrow-down"></i>
-                        </div>
-                        <div class="attachment-info">
-                            <div class="attachment-name">Скачать файл задания</div>
-                            <div class="attachment-size">
-                                {{ homework.attachment.size|filesizeformat }}
-                            </div>
-                        </div>
-                    </a>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-
         <!-- Статистика -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-            <div class="card text-center">
-                <div class="card-body">
-                    <div class="text-3xl font-bold text-primary">{{ students_data|length }}</div>
-                    <div class="text-sm text-muted">Всего учеников</div>
-                </div>
-            </div>
-            <div class="card text-center">
-                <div class="card-body">
-                    <div class="text-3xl font-bold text-success">
-                        {{ students_data|length|add:"-1"|add:"-2" }} {# Пример: сдали 8 из 10 #}
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h3 class="text-primary">{{ total_students }}</h3>
+                        <p class="text-muted mb-0">Всего учеников</p>
                     </div>
-                    <div class="text-sm text-muted">Сдали работу</div>
                 </div>
             </div>
-            <div class="card text-center">
-                <div class="card-body">
-                    <div class="text-3xl font-bold text-warning">3</div>
-                    <div class="text-sm text-muted">Ожидают проверки</div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h3 class="text-success">{{ submitted_count }}</h3>
+                        <p class="text-muted mb-0">Сдали работу</p>
+                        <small>{{ submitted_percentage }}%</small>
+                    </div>
                 </div>
             </div>
-            <div class="card text-center">
-                <div class="card-body">
-                    <div class="text-3xl font-bold text-info">5</div>
-                    <div class="text-sm text-muted">Проверено</div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h3 class="text-warning">{{ pending_review }}</h3>
+                        <p class="text-muted mb-0">Ожидают проверки</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h3 class="text-info">{{ graded_count }}</h3>
+                        <p class="text-muted mb-0">Проверено</p>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Таблица работ -->
+        <!-- Таблица -->
         <div class="card">
-            <div class="card-header">
-                <h2 class="card-title mb-0">Работы учеников</h2>
-            </div>
             <div class="card-body">
-                {% if students_data %}
                 <div class="table-responsive">
-                    <table class="table">
+                    <table class="table table-hover">
                         <thead>
                             <tr>
-                                <th width="5%">№</th>
-                                <th width="25%">Ученик</th>
-                                <th width="15%">Статус</th>
-                                <th width="15%">Дата сдачи</th>
-                                <th width="20%">Оценка</th>
-                                <th width="20%">Действия</th>
+                                <th>№</th>
+                                <th>Ученик</th>
+                                <th>Статус</th>
+                                <th>Дата сдачи</th>
+                                <th>Оценка</th>
+                                <th>Действия</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for student in students_data %}
-                            <tr>
+                            <tr class="student-row" data-student-id="{{ student.student.id }}">
                                 <td>{{ forloop.counter }}</td>
                                 <td>
-                                    <div class="user-name">{{ student.student.get_full_name }}</div>
+                                    <strong>{{ student.student.get_full_name }}</strong><br>
                                     <small class="text-muted">{{ student.profile.patronymic }}</small>
                                 </td>
-                                <td class="submission-status">
+                                <td>
                                     {% if student.submission %}
                                         <span class="badge bg-success">Сдано</span>
                                     {% else %}
@@ -180,9 +166,9 @@
                                         -
                                     {% endif %}
                                 </td>
-                                <td>
+                                <td id="grade-cell-{{ student.student.id }}">
                                     {% if student.grade %}
-                                        <span class="badge 
+                                        <span class="badge grade-badge 
                                             {% if student.grade.value >= 4.5 %}bg-success
                                             {% elif student.grade.value >= 3.5 %}bg-info
                                             {% elif student.grade.value >= 2.5 %}bg-warning
@@ -190,207 +176,321 @@
                                             {{ student.grade.value }}
                                         </span>
                                     {% elif student.submission %}
-                                        <input type="number" 
-                                               min="1" 
-                                               max="5" 
-                                               step="0.5"
-                                               class="grade-input"
-                                               id="grade_{{ student.student.id }}"
-                                               placeholder="Оценка"
-                                               data-submission-id="{{ student.submission.id }}">
+                                        <div class="grade-selector">
+                                            <button type="button" class="grade-btn poor" onclick="gradeStudent({{ student.student.id }}, 2)">2</button>
+                                            <button type="button" class="grade-btn satisfactory" onclick="gradeStudent({{ student.student.id }}, 3)">3</button>
+                                            <button type="button" class="grade-btn good" onclick="gradeStudent({{ student.student.id }}, 4)">4</button>
+                                            <button type="button" class="grade-btn excellent" onclick="gradeStudent({{ student.student.id }}, 5)">5</button>
+                                        </div>
                                     {% else %}
                                         -
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <div class="action-buttons">
-                                        {% if student.submission %}
-                                        <button type="button" 
-                                                class="btn-icon"
-                                                onclick="toggleSubmissionDetails({{ student.student.id }})"
-                                                title="Просмотреть работу">
-                                            <i class="bi bi-eye"></i>
+                                    {% if student.submission %}
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-primary" 
+                                                onclick="viewWork('{{ student.student.id }}', '{{ student.student.get_full_name }}', '{{ student.submission.id }}')">
+                                            <i class="bi bi-eye"></i> Просмотр
                                         </button>
-                                        
-                                        {% if not student.grade and student.submission %}
-                                        <button type="button" 
-                                                class="btn-icon success"
-                                                onclick="saveGrade({{ student.student.id }}, {{ student.submission.id }})"
-                                                title="Сохранить оценку">
-                                            <i class="bi bi-check"></i>
-                                        </button>
-                                        {% endif %}
-                                        
                                         {% if student.submission.submission_file %}
-                                        <a href="{{ student.submission.submission_file.url }}" 
-                                           class="btn-icon"
-                                           target="_blank"
-                                           title="Скачать файл">
+                                        <a href="{% url 'teacher_portal:view_submission_file' student.submission.id %}?action=download" 
+                                           class="btn btn-outline-secondary">
                                             <i class="bi bi-download"></i>
                                         </a>
                                         {% endif %}
-                                        {% endif %}
                                     </div>
+                                    {% endif %}
                                 </td>
                             </tr>
-                            
-                            <!-- Детали работы -->
-                            {% if student.submission %}
-                            <tr id="details_{{ student.student.id }}" style="display: none;">
-                                <td colspan="6">
-                                    <div class="submission-details">
-                                        <h5>Работа ученика:</h5>
-                                        {% if student.submission.submission_text %}
-                                        <div class="submission-text mb-3">
-                                            {{ student.submission.submission_text|linebreaks }}
-                                        </div>
-                                        {% endif %}
-                                        
-                                        {% if student.submission.submission_file %}
-                                        <div class="file-preview">
-                                            <h6>Прикрепленный файл:</h6>
-                                            <a href="{{ student.submission.submission_file.url }}" 
-                                               class="attachment-item" 
-                                               target="_blank">
-                                                <div class="attachment-icon">
-                                                    <i class="bi bi-file-earmark-arrow-down"></i>
-                                                </div>
-                                                <div class="attachment-info">
-                                                    <div class="attachment-name">
-                                                        {{ student.submission.submission_file.name|slice:"14:" }}
-                                                    </div>
-                                                    <div class="attachment-size">
-                                                        {{ student.submission.submission_file.size|filesizeformat }}
-                                                    </div>
-                                                </div>
-                                            </a>
-                                        </div>
-                                        {% endif %}
-                                        
-                                        {% if student.grade %}
-                                        <div class="mt-3 p-3 bg-gray-50 rounded-lg">
-                                            <h6>Оценка: {{ student.grade.value }}</h6>
-                                            {% if student.grade.comment %}
-                                            <p class="mb-0"><strong>Комментарий:</strong> {{ student.grade.comment }}</p>
-                                            {% endif %}
-                                            <small class="text-muted">Выставлена: {{ student.grade.date|date:"d.m.Y" }}</small>
-                                        </div>
-                                        {% else %}
-                                        <div class="mt-3">
-                                            <textarea id="comment_{{ student.student.id }}" 
-                                                      class="form-input" 
-                                                      rows="3"
-                                                      placeholder="Комментарий к оценке..."></textarea>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endif %}
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
-                {% else %}
-                <div class="empty-state">
-                    <i class="bi bi-people"></i>
-                    <h3>В классе нет учеников</h3>
-                    <p>Не удалось загрузить список учеников</p>
-                </div>
-                {% endif %}
             </div>
         </div>
     </main>
 </div>
 
+<!-- Модальное окно для просмотра работы -->
+<div class="modal fade" id="workModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Работа ученика: <span id="modalStudentName"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6>Текст работы:</h6>
+                    <div id="modalSubmissionText" class="submission-content"></div>
+                    <div id="noTextMessage" class="alert alert-info" style="display: none;">
+                        Текст работы не предоставлен
+                    </div>
+                </div>
+                
+                <div id="fileSection" class="mb-3" style="display: none;">
+                    <h6>Прикрепленный файл:</h6>
+                    <a id="fileLink" href="#" class="file-attachment" target="_blank">
+                        <i class="bi bi-file-earmark me-2"></i>
+                        <span id="fileName"></span>
+                    </a>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Оценка:</h6>
+                    <div class="grade-selector mb-3">
+                        <button type="button" class="grade-btn poor" onclick="selectGradeInModal(2)">2</button>
+                        <button type="button" class="grade-btn satisfactory" onclick="selectGradeInModal(3)">3</button>
+                        <button type="button" class="grade-btn good" onclick="selectGradeInModal(4)">4</button>
+                        <button type="button" class="grade-btn excellent" onclick="selectGradeInModal(5)">5</button>
+                    </div>
+                    <textarea id="gradeComment" class="form-control" placeholder="Комментарий к оценке (необязательно)" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button type="button" class="btn btn-primary" id="saveGradeBtn" onclick="saveGradeFromModal()">
+                    <i class="bi bi-save"></i> Сохранить оценку
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-function toggleSubmissionDetails(studentId) {
-    const detailsRow = document.getElementById(`details_${studentId}`);
-    if (detailsRow.style.display === 'none' || !detailsRow.style.display) {
-        detailsRow.style.display = 'table-row';
-    } else {
-        detailsRow.style.display = 'none';
+// Глобальные переменные
+let currentStudentId = null;
+let currentSubmissionId = null;
+let selectedGrade = null;
+let submissionText = '';
+let hasFile = false;
+let fileUrl = '';
+let fileName = '';
+
+// Функция для получения CSRF токена
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
     }
+    return cookieValue;
 }
 
-function saveGrade(studentId, submissionId) {
-    const gradeInput = document.getElementById(`grade_${studentId}`);
-    const commentInput = document.getElementById(`comment_${studentId}`);
-    const gradeValue = gradeInput.value.trim();
+// Просмотр работы ученика
+function viewWork(studentId, studentName, submissionId) {
+    console.log('Просмотр работы:', studentId, studentName, submissionId);
     
-    if (!gradeValue) {
-        alert('Введите оценку');
-        gradeInput.focus();
+    currentStudentId = studentId;
+    currentSubmissionId = submissionId;
+    selectedGrade = null;
+    
+    // Показываем загрузку
+    document.getElementById('modalStudentName').textContent = studentName;
+    document.getElementById('modalSubmissionText').textContent = 'Загрузка...';
+    document.getElementById('noTextMessage').style.display = 'none';
+    document.getElementById('fileSection').style.display = 'none';
+    
+    // Сбрасываем выбранную оценку
+    document.querySelectorAll('#workModal .grade-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+    document.getElementById('saveGradeBtn').disabled = true;
+    document.getElementById('gradeComment').value = '';
+    
+    // Загружаем данные через AJAX
+    fetch(`/teacher-portal/homework/{{ homework.id }}/student/${studentId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Отображаем текст работы
+                if (data.submission_text) {
+                    document.getElementById('modalSubmissionText').textContent = data.submission_text;
+                    document.getElementById('modalSubmissionText').style.display = 'block';
+                    document.getElementById('noTextMessage').style.display = 'none';
+                } else {
+                    document.getElementById('modalSubmissionText').style.display = 'none';
+                    document.getElementById('noTextMessage').style.display = 'block';
+                }
+                
+                // Отображаем файл
+                if (data.has_file) {
+                    document.getElementById('fileSection').style.display = 'block';
+                    document.getElementById('fileLink').href = data.file_url;
+                    document.getElementById('fileName').textContent = data.file_name;
+                }
+            } else {
+                document.getElementById('modalSubmissionText').textContent = 'Ошибка загрузки данных';
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка:', error);
+            document.getElementById('modalSubmissionText').textContent = 'Ошибка загрузки данных';
+        });
+    
+    // Показываем модальное окно
+    const modal = new bootstrap.Modal(document.getElementById('workModal'));
+    modal.show();
+}
+
+// Выбор оценки в модальном окне
+function selectGradeInModal(grade) {
+    console.log('Выбрана оценка:', grade);
+    selectedGrade = grade;
+    
+    // Обновляем кнопки
+    document.querySelectorAll('#workModal .grade-btn').forEach(btn => {
+        btn.classList.remove('selected');
+        if (parseInt(btn.textContent) === grade) {
+            btn.classList.add('selected');
+        }
+    });
+    
+    // Активируем кнопку сохранения
+    document.getElementById('saveGradeBtn').disabled = false;
+}
+
+// Сохранение оценки из модального окна
+function saveGradeFromModal() {
+    console.log('Сохранение оценки из модального окна');
+    
+    if (!selectedGrade) {
+        alert('Выберите оценку');
         return;
     }
     
-    const gradeNum = parseFloat(gradeValue);
-    if (isNaN(gradeNum) || gradeNum < 1 || gradeNum > 5) {
-        alert('Оценка должна быть числом от 1 до 5');
-        gradeInput.focus();
+    if (!currentSubmissionId) {
+        alert('Ошибка: нет данных об отправке');
         return;
     }
+    
+    const comment = document.getElementById('gradeComment').value || '';
+    
+    saveGrade(currentSubmissionId, selectedGrade, comment, true);
+}
+
+// Оценка студента из таблицы
+function gradeStudent(studentId, grade) {
+    console.log('Оценка студента:', studentId, grade);
+    
+    const comment = prompt('Введите комментарий к оценке (необязательно):', '');
+    if (comment === null) return; // Пользователь отменил
+    
+    // Находим submissionId для этого студента
+    // Для этого найдем кнопку просмотра в той же строке
+    const row = document.querySelector(`tr[data-student-id="${studentId}"]`);
+    if (!row) {
+        alert('Ошибка: не найден ученик');
+        return;
+    }
+    
+    const viewBtn = row.querySelector('.btn-outline-primary');
+    if (!viewBtn || !viewBtn.onclick) {
+        alert('Ошибка: нет данных о работе');
+        return;
+    }
+    
+    // Извлекаем submissionId из функции onclick
+    const onclickText = viewBtn.onclick.toString();
+    const match = onclickText.match(/viewWork\('(\d+)', '[^']+', '(\d+)'\)/);
+    
+    if (!match) {
+        alert('Ошибка: не удалось получить данные работы');
+        return;
+    }
+    
+    const submissionId = match[2];
+    
+    saveGrade(submissionId, grade, comment, false);
+}
+
+// Сохранение оценки
+function saveGrade(submissionId, grade, comment, closeModal = false) {
+    console.log('Сохранение оценки:', submissionId, grade);
     
     const formData = new FormData();
-    formData.append('value', gradeValue);
-    formData.append('comment', commentInput ? commentInput.value : '');
-    formData.append('submission_id', submissionId);
+    formData.append('value', grade);
+    formData.append('comment', comment);
     
-    fetch(`{% url 'teacher_portal:grade_submission' %}0`.replace('0', submissionId), {
+    fetch(`/teacher-portal/submissions/${submissionId}/grade/`, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': '{{ csrf_token }}',
+            'X-CSRFToken': getCookie('csrftoken'),
         },
         body: formData
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Обновляем интерфейс
-            const gradeCell = gradeInput.closest('td');
-            gradeCell.innerHTML = `
-                <span class="badge ${getGradeBadgeClass(gradeNum)}">
-                    ${gradeValue}
-                </span>
-            `;
-            
-            // Скрываем кнопку сохранения
-            const saveBtn = document.querySelector(`button[onclick="saveGrade(${studentId}, ${submissionId})"]`);
-            if (saveBtn) saveBtn.remove();
+            // Обновляем таблицу
+            updateStudentGrade(currentStudentId, grade);
             
             // Показываем уведомление
-            showAlert('success', 'Оценка успешно сохранена');
+            showAlert('success', 'Оценка сохранена');
+            
+            // Закрываем модальное окно если нужно
+            if (closeModal) {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('workModal'));
+                if (modal) modal.hide();
+            }
         } else {
-            showAlert('error', data.error || 'Ошибка при сохранении');
+            alert(data.error || 'Ошибка при сохранении оценки');
         }
     })
     .catch(error => {
-        showAlert('error', 'Ошибка сети: ' + error.message);
+        console.error('Error:', error);
+        alert('Ошибка сети');
     });
 }
 
-function getGradeBadgeClass(grade) {
-    if (grade >= 4.5) return 'bg-success';
-    if (grade >= 3.5) return 'bg-info';
-    if (grade >= 2.5) return 'bg-warning';
-    return 'bg-danger';
+// Обновление оценки в таблице
+function updateStudentGrade(studentId, grade) {
+    console.log('Обновление оценки:', studentId, grade);
+    
+    const gradeCell = document.getElementById(`grade-cell-${studentId}`);
+    if (!gradeCell) return;
+    
+    // Определяем цвет баджа
+    let badgeClass = 'bg-danger';
+    if (grade >= 4.5) badgeClass = 'bg-success';
+    else if (grade >= 3.5) badgeClass = 'bg-info';
+    else if (grade >= 2.5) badgeClass = 'bg-warning';
+    
+    // Обновляем ячейку
+    gradeCell.innerHTML = `
+        <span class="badge grade-badge ${badgeClass}">${grade}</span>
+    `;
 }
 
+// Показ уведомлений
 function showAlert(type, message) {
     const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type === 'success' ? 'success' : 'error'}`;
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999;';
     alertDiv.innerHTML = `
         ${message}
-        <button type="button" class="btn-close" onclick="this.parentElement.remove()">&times;</button>
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
     `;
     
-    document.querySelector('.main-content').prepend(alertDiv);
+    document.body.appendChild(alertDiv);
     
     setTimeout(() => {
         if (alertDiv.parentElement) {
             alertDiv.remove();
         }
-    }, 5000);
+    }, 3000);
 }
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Страница загружена, кнопки готовы к работе');
+});
 </script>
 {% endblock %}

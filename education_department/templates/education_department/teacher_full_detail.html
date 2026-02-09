@@ -4,14 +4,23 @@
 
 {% block content %}
 <div class="admin-container">
-    {% include "includes/sidebar.html" %}
-    
+    {% if request.user.groups.all.0.name == 'education_department' or request.path|slice:":10" == '/education/' %}
+        {% include "education_department/includes/education_sidebar.html" %}
+    {% elif request.user.is_superuser or request.user.groups.all.0.name == 'admin' %}
+        <!-- Если админ или суперпользователь, используем стандартный сайдбар -->
+        {% include "includes/sidebar.html" %}
+    {% endif %}    
     <main class="main-content">
         <!-- Хлебные крошки -->
         <nav aria-label="breadcrumb" class="mb-4">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item">
-                    <a href="{% url 'teachers_overview' %}">Обзор учителей</a>
+                    <!-- Используем request.resolver_match для определения контекста -->
+                    {% if request.resolver_match.app_name == 'education_department' %}
+                        <a href="{% url 'education_department:teachers_overview' %}">Обзор учителей</a>
+                    {% else %}
+                        <a href="{% url 'teachers_overview' %}">Обзор учителей</a>
+                    {% endif %}
                 </li>
                 <li class="breadcrumb-item active">{{ teacher_user.get_full_name }}</li>
             </ol>
@@ -28,12 +37,22 @@
             </div>
             <div class="header-right">
                 <div class="btn-group">
-                    <a href="{% url 'teachers_overview' %}" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left"></i> Назад
-                    </a>
-                    <a href="{% url 'teacher_edit' teacher_user.id %}" class="btn btn-outline-primary">
-                        <i class="bi bi-pencil"></i> Редактировать
-                    </a>
+                    <!-- Определяем URL возврата -->
+                    {% if request.resolver_match.app_name == 'education_department' %}
+                        <a href="{% url 'education_department:teachers_overview' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Назад
+                        </a>
+                        <a href="#" class="btn btn-outline-primary">
+                            <i class="bi bi-pencil"></i> Редактировать
+                        </a>
+                    {% else %}
+                        <a href="{% url 'teachers_overview' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Назад
+                        </a>
+                        <a href="{% url 'teacher_edit' teacher_user.id %}" class="btn btn-outline-primary">
+                            <i class="bi bi-pencil"></i> Редактировать
+                        </a>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -205,10 +224,18 @@
                                         <p class="text-muted small mb-0">{{ stat.subject.description|truncatechars:100 }}</p>
                                         {% endif %}
                                     </div>
-                                    <a href="{% url 'teacher_subject_performance' teacher_user.id stat.subject.id %}" 
-                                       class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-graph-up"></i>
-                                    </a>
+                                    <!-- Используем правильный URL в зависимости от контекста -->
+                                    {% if request.resolver_match.app_name == 'education_department' %}
+                                        <a href="{% url 'education_department:teacher_subject_performance' teacher_user.id stat.subject.id %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-graph-up"></i>
+                                        </a>
+                                    {% else %}
+                                        <a href="{% url 'teacher_subject_performance' teacher_user.id stat.subject.id %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-graph-up"></i>
+                                        </a>
+                                    {% endif %}
                                 </div>
                                 
                                 <div class="stats-row mb-3">
@@ -283,9 +310,18 @@
                                                 </div>
                                             </div>
                                             <div class="text-end">
-                                                <span class="badge bg-light text-dark">
-                                                    {{ lesson.daily_schedule.student_group.year }} год
-                                                </span>
+                                                <!-- Ссылка на группы в зависимости от контекста -->
+                                                {% if request.resolver_match.app_name == 'education_department' %}
+                                                    <a href="{% url 'education_department:group_grades_detail' lesson.daily_schedule.student_group.id %}" 
+                                                       class="badge bg-light text-dark text-decoration-none">
+                                                        {{ lesson.daily_schedule.student_group.year }} год
+                                                    </a>
+                                                {% else %}
+                                                    <a href="{% url 'group_grades_detail' lesson.daily_schedule.student_group.id %}" 
+                                                       class="badge bg-light text-dark text-decoration-none">
+                                                        {{ lesson.daily_schedule.student_group.year }} год
+                                                    </a>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     </div>
@@ -320,10 +356,18 @@
                                         <strong>{{ group.name }}</strong>
                                         <div class="text-muted small">{{ group.year }} год обучения</div>
                                     </div>
-                                    <a href="{% url 'group_grades_detail' group.id %}" 
-                                       class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
+                                    <!-- Ссылка на просмотр группы в зависимости от контекста -->
+                                    {% if request.resolver_match.app_name == 'education_department' %}
+                                        <a href="{% url 'education_department:group_grades_detail' group.id %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    {% else %}
+                                        <a href="{% url 'group_grades_detail' group.id %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    {% endif %}
                                 </div>
                             </div>
                             {% endfor %}
@@ -402,6 +446,8 @@
 .stat-icon.primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
 .stat-icon.success { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); }
 .stat-icon.warning { background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); }
+.stat-icon.danger { background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%); }
+.stat-icon.secondary { background: linear-gradient(135deg, #a0aec0 0%, #718096 100%); }
 .stats-row {
     display: flex;
     gap: 1rem;
@@ -423,6 +469,47 @@
 }
 .schedule-day:last-child {
     border-bottom: none;
+}
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.25rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+.stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 0.25rem;
+}
+.stat-label {
+    font-size: 0.875rem;
+    color: #718096;
+}
+.grade-distribution {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
 }
 </style>
 {% endblock %}

@@ -4,14 +4,14 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_protect
 from api.models import StudentGroup, Subject, DailySchedule, ScheduleLesson, TeacherSubject, User
-from MPTed_base.decorators import admin_required
+from MPTed_base.decorators import *
 
 
 from django.views.decorators.csrf import ensure_csrf_cookie
 
 @ensure_csrf_cookie
 @login_required
-@admin_required
+@education_department_required
 def schedule_dashboard(request):
     """Главная страница расписания"""
     groups = StudentGroup.objects.all().order_by('year', 'name')
@@ -82,7 +82,7 @@ def get_week_schedule(group):
 @csrf_protect
 @require_http_methods(["POST"])
 @login_required
-@admin_required
+@education_department_required
 def toggle_weekend_day(request):
     """Переключить день как выходной"""
     if request.method == 'POST':
@@ -120,7 +120,7 @@ def toggle_weekend_day(request):
 @csrf_protect
 @require_http_methods(["POST"])
 @login_required
-@admin_required
+@education_department_required
 def add_lesson(request):
     """Добавить урок в расписание"""
     try:
@@ -221,7 +221,7 @@ def add_lesson(request):
 
 @require_http_methods(["DELETE"])
 @login_required
-@admin_required
+@education_department_required
 def delete_lesson(request, lesson_id):
     """Удалить урок из расписания"""
     lesson = get_object_or_404(ScheduleLesson, id=lesson_id)
@@ -236,7 +236,7 @@ def delete_lesson(request, lesson_id):
 @csrf_protect
 @require_http_methods(["POST"])
 @login_required
-@admin_required
+@education_department_required
 def update_lesson(request, lesson_id):
     """Обновить урок в расписании"""
     lesson = get_object_or_404(ScheduleLesson, id=lesson_id)
@@ -279,7 +279,7 @@ def update_lesson(request, lesson_id):
 
 
 @login_required
-@admin_required
+@education_department_required
 def get_subject_teachers(request, subject_id):
     """Получить учителей по предмету"""
     subject = get_object_or_404(Subject, id=subject_id)

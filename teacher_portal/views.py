@@ -850,6 +850,7 @@ def create_homework(request, homework_id=None):
     
     return render(request, 'teacher_portal/homework_form.html', context)
 
+
 @teacher_required
 def homework_submissions(request, homework_id):
     """Проверка работ по домашнему заданию"""
@@ -861,9 +862,19 @@ def homework_submissions(request, homework_id):
         homework=homework
     ).select_related('student').order_by('submitted_at')
     
-    # Пока не можем получить оценки за эти работы, т.к. нет связи
-    # Вместо этого создаем пустой словарь
-    grades = {}
+    # Получаем оценки за домашние работы
+    submission_grades = {}
+    for submission in submissions:
+        # Ищем оценку для этого ученика по этому предмету с типом HW
+        grade = Grade.objects.filter(
+            student=submission.student,
+            subject=homework.schedule_lesson.subject,
+            grade_type='HW',
+            date__gte=submission.submitted_at.date()
+        ).order_by('-date').first()
+        
+        if grade:
+            submission_grades[submission.id] = grade
     
     # Получаем всех учеников группы
     all_students = StudentProfile.objects.filter(
@@ -882,8 +893,10 @@ def homework_submissions(request, homework_id):
                 submission = sub
                 break
         
-        # Ищем оценку (пока не можем, т.к. нет связи)
+        # Ищем оценку
         grade = None
+        if submission and submission.id in submission_grades:
+            grade = submission_grades[submission.id]
         
         students_data.append({
             'student': student,
@@ -892,14 +905,214 @@ def homework_submissions(request, homework_id):
             'grade': grade,
         })
     
+    # Статистика
+    total_students = all_students.count()
+    submitted_count = submissions.count()
+    graded_count = len([s for s in students_data if s['grade']])
+    pending_review = submitted_count - graded_count
+    missing_count = total_students - submitted_count
+    submitted_percentage = round((submitted_count / total_students * 100) if total_students > 0 else 0, 1)
+    
     context = {
         'teacher_info': teacher_info,
         'homework': homework,
         'students_data': students_data,
+        'total_students': total_students,
+        'submitted_count': submitted_count,
+        'graded_count': graded_count,
+        'pending_review': pending_review,
+        'missing_count': missing_count,
+        'submitted_percentage': submitted_percentage,
+        'today': timezone.now().date(),
     }
     
     return render(request, 'teacher_portal/homework_submissions.html', context)
 
+
+@require_http_methods(["POST"])
+@teacher_required
+def update_grade(request, grade_id):
+    """Обновление существующей оценки"""
+    grade = get_object_or_404(Grade, id=grade_id, teacher=request.user)
+    
+    try:
+        value = float(request.POST.get('value', 0))
+        comment = request.POST.get('comment', '')
+        
+        if value < 1 or value > 5:
+            return JsonResponse({'error': 'Оценка должна быть от 1 до 5'}, status=400)
+        
+        grade.value = value
+        grade.comment = comment
+        grade.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Оценка обновлена',
+            'grade_id': grade.id,
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET
+
+@teacher_required
+@require_GET
+def student_submission_detail(request, homework_id, student_id):
+    """Детальная информация об отправке ученика (для AJAX)"""
+    homework = get_object_or_404(Homework, id=homework_id, schedule_lesson__teacher=request.user)
+    student = get_object_or_404(User, id=student_id)
+    
+    # Проверяем, что ученик в группе ДЗ
+    if not StudentProfile.objects.filter(user=student, student_group=homework.student_group).exists():
+        return JsonResponse({'error': 'Доступ запрещен'}, status=403)
+    
+    # Получаем отправку (если есть)
+    submission = HomeworkSubmission.objects.filter(
+        homework=homework,
+        student=student
+    ).first()
+    
+    # Получаем оценку (если есть)
+    grade = None
+    if submission:
+        grade = Grade.objects.filter(
+            student=student,
+            subject=homework.schedule_lesson.subject,
+            grade_type='HW',
+            date__gte=submission.submitted_at.date()
+        ).order_by('-date').first()
+    
+    from django.urls import reverse
+    
+    data = {
+        'success': True,
+        'student_name': student.get_full_name(),
+        'student_patronymic': student.student_profile.patronymic if hasattr(student, 'student_profile') else '',
+        'has_submission': submission is not None,
+        'submission_id': submission.id if submission else None,
+        'submission_text': submission.submission_text if submission else None,
+        'submission_date': submission.submitted_at.strftime('%d.%m.%Y %H:%M') if submission else None,
+        'has_file': submission and submission.submission_file,
+        'file_name': submission.submission_file.name.split('/')[-1] if submission and submission.submission_file else None,
+        'file_size': submission.submission_file.size if submission and submission.submission_file else None,
+        'file_url': reverse('teacher_portal:view_submission_file', args=[submission.id]) if submission and submission.submission_file else None,
+        'has_grade': grade is not None,
+        'grade_id': grade.id if grade else None,
+        'grade_value': grade.value if grade else None,
+        'grade_comment': grade.comment if grade else None,
+    }
+    
+    return JsonResponse(data)
+
+@teacher_required
+def find_grade_id(request):
+    """Поиск ID оценки по ученику и отправке"""
+    student_id = request.GET.get('student_id')
+    submission_id = request.GET.get('submission_id')
+    
+    if not student_id or not submission_id:
+        return JsonResponse({'error': 'Не указаны параметры'}, status=400)
+    
+    try:
+        # Получаем отправку
+        submission = get_object_or_404(HomeworkSubmission, id=submission_id)
+        
+        # Проверяем доступ
+        if submission.homework.schedule_lesson.teacher != request.user:
+            return JsonResponse({'error': 'Доступ запрещен'}, status=403)
+        
+        # Ищем оценку за эту домашнюю работу
+        grade = Grade.objects.filter(
+            student_id=student_id,
+            subject=submission.homework.schedule_lesson.subject,
+            grade_type='HW',
+            date__gte=submission.submitted_at.date()
+        ).order_by('-date').first()
+        
+        if grade:
+            return JsonResponse({
+                'success': True,
+                'grade_id': grade.id,
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'Оценка не найдена',
+            })
+            
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@teacher_required
+def view_submission_file(request, submission_id):
+    """Просмотр файла, отправленного учеником"""
+    submission = get_object_or_404(HomeworkSubmission, id=submission_id)
+    
+    # Проверяем, что учитель имеет доступ к этой работе
+    if submission.homework.schedule_lesson.teacher != request.user:
+        messages.error(request, 'Доступ запрещен')
+        return redirect('teacher_portal:homework')
+    
+    # Проверяем, есть ли файл
+    if not submission.submission_file:
+        messages.error(request, 'Файл не прикреплен')
+        return redirect('teacher_portal:homework_submissions', homework_id=submission.homework.id)
+    
+    try:
+        # Получаем путь к файлу
+        file_path = submission.submission_file.path
+        
+        # Проверяем существование файла
+        if not os.path.exists(file_path):
+            messages.error(request, 'Файл не найден')
+            return redirect('teacher_portal:homework_submissions', homework_id=submission.homework.id)
+        
+        # Определяем тип файла
+        file_extension = os.path.splitext(file_path)[1].lower()
+        content_types = {
+            '.pdf': 'application/pdf',
+            '.doc': 'application/msword',
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            '.txt': 'text/plain',
+            '.zip': 'application/zip',
+            '.rar': 'application/vnd.rar',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+        }
+        
+        content_type = content_types.get(file_extension, 'application/octet-stream')
+        
+        # Определяем действие
+        action = request.GET.get('action', 'view')
+        
+        if action == 'download':
+            response = FileResponse(
+                open(file_path, 'rb'),
+                content_type=content_type,
+                as_attachment=True,
+                filename=os.path.basename(file_path)
+            )
+        else:
+            response = FileResponse(
+                open(file_path, 'rb'),
+                content_type=content_type
+            )
+            
+            if file_extension in ['.jpg', '.jpeg', '.png', '.gif']:
+                response['Content-Disposition'] = f'inline; filename="{os.path.basename(file_path)}"'
+        
+        return response
+        
+    except Exception as e:
+        messages.error(request, f'Ошибка при открытии файла: {str(e)}')
+        return redirect('teacher_portal:homework_submissions', homework_id=submission.homework.id)
 
 @require_http_methods(["POST"])
 @teacher_required
@@ -1504,3 +1717,75 @@ def view_statistics(request):
     }
     
     return render(request, 'teacher_portal/statistics.html', context)
+
+
+# teacher_portal/views.py - добавьте эту функцию в конец файла
+
+import os
+from django.http import FileResponse, Http404
+from django.utils.encoding import smart_str
+from django.conf import settings
+
+@teacher_required
+def view_homework_file(request, homework_id):
+    """Просмотр прикрепленного файла домашнего задания"""
+    homework = get_object_or_404(Homework, id=homework_id, schedule_lesson__teacher=request.user)
+    
+    # Проверяем, есть ли прикрепленный файл
+    if not homework.attachment:
+        messages.error(request, 'Файл не прикреплен к этому заданию')
+        return redirect('teacher_portal:homework_submissions', homework_id=homework_id)
+    
+    try:
+        # Получаем путь к файлу
+        file_path = homework.attachment.path
+        
+        # Проверяем существование файла
+        if not os.path.exists(file_path):
+            messages.error(request, 'Файл не найден на сервере')
+            return redirect('teacher_portal:homework_submissions', homework_id=homework_id)
+        
+        # Определяем тип файла для правильного Content-Type
+        file_extension = os.path.splitext(file_path)[1].lower()
+        content_types = {
+            '.pdf': 'application/pdf',
+            '.doc': 'application/msword',
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            '.txt': 'text/plain',
+            '.zip': 'application/zip',
+            '.rar': 'application/vnd.rar',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+        }
+        
+        content_type = content_types.get(file_extension, 'application/octet-stream')
+        
+        # Определяем, просмотр или скачивание
+        action = request.GET.get('action', 'view')
+        
+        if action == 'download':
+            # Скачивание файла
+            response = FileResponse(
+                open(file_path, 'rb'),
+                content_type=content_type,
+                as_attachment=True,  # Заставляем браузер скачать файл
+                filename=os.path.basename(file_path)
+            )
+        else:
+            # Просмотр в браузере
+            response = FileResponse(
+                open(file_path, 'rb'),
+                content_type=content_type
+            )
+            
+            # Для изображений добавляем заголовки для правильного отображения
+            if file_extension in ['.jpg', '.jpeg', '.png', '.gif']:
+                response['Content-Disposition'] = f'inline; filename="{os.path.basename(file_path)}"'
+        
+        return response
+        
+    except Exception as e:
+        messages.error(request, f'Ошибка при открытии файла: {str(e)}')
+        return redirect('teacher_portal:homework_submissions', homework_id=homework_id)

@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="admin-container">
-    {% include "includes/sidebar.html" %}
+    {% include "education_department/includes/education_sidebar.html" %}
     
     <main class="main-content">
         <!-- Заголовок -->
@@ -226,7 +226,7 @@
                                 </td>
                                 <td>
                                     <div class="btn-group">
-                                        <a href="{% url 'teacher_full_detail' teacher.id %}" 
+                                        <a href="{% url 'education_department:teacher_full_detail' teacher.id %}" 
                                            class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-info-circle"></i> Подробно
                                         </a>

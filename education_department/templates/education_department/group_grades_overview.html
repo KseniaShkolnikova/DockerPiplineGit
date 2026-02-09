@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="admin-container">
-    {% include "includes/sidebar.html" %}
+    {% include "education_department/includes/education_sidebar.html" %}
     
     <main class="main-content">
         <!-- Заголовок -->
@@ -125,7 +125,7 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <a href="{% url 'group_grades_detail' stat.group.id %}" 
+                                    <a href="{% url 'education_department:group_grades_detail' stat.group.id %}" 
                                        class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-graph-up"></i> Статистика
                                     </a>

@@ -4,6 +4,8 @@
 {% block title %}{{ homework.title }} - MPTed{% endblock %}
 
 {% block content %}
+{% now "U" as current_timestamp %}
+{% with due_date_timestamp=homework.due_date|date:"U" %}
 <div class="admin-container">
     {% include "student/_sidebar.html" %}
 
@@ -20,6 +22,17 @@
             </div>
         </div>
 
+        <!-- ПРОВЕРКА СРОКА СДАЧИ -->
+        {% if current_timestamp > due_date_timestamp %}
+        <div class="alert alert-danger mb-4">
+            <i class="bi bi-exclamation-circle"></i>
+            <strong>Срок сдачи истек. Вы не можете сдать это задание.</strong>
+            <div class="mt-1">
+                Срок сдачи был: <strong>{{ homework.due_date|date:"d.m.Y H:i" }}</strong>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <!-- Основная информация -->
             <div class="lg:col-span-2">
@@ -30,12 +43,24 @@
                             {{ homework.description|linebreaks }}
                         </div>
 
+                        <!-- Файлы от учителя -->
                         {% if homework.attachment %}
                         <div class="mb-4">
-                            <h4 class="font-semibold mb-2">Прикрепленные файлы</h4>
-                            <a href="{{ homework.attachment.url }}" class="btn btn-outline" target="_blank">
-                                <i class="bi bi-download"></i> Скачать файл преподавателя
-                            </a>
+                            <h4 class="font-semibold mb-2">Файлы от учителя:</h4>
+                            <div class="btn-group">
+                                <a href="{% url 'view_homework_file' homework.id %}" 
+                                   target="_blank" 
+                                   class="btn btn-outline-primary">
+                                    <i class="bi bi-eye"></i> Просмотреть файл
+                                </a>
+                                <a href="{% url 'view_homework_file' homework.id %}?action=download" 
+                                   class="btn btn-outline-secondary">
+                                    <i class="bi bi-download"></i> Скачать
+                                </a>
+                            </div>
+                            <small class="text-muted d-block mt-2">
+                                Файл: {{ homework.attachment.name|slice:"20:" }}
+                            </small>
                         </div>
                         {% endif %}
 
@@ -47,18 +72,21 @@
                                     <span class="font-semibold">{{ homework.schedule_lesson.subject.name }}</span>
                                 </div>
                                 <div class="flex justify-between">
+                                    <span class="text-muted">Учитель:</span>
+                                    <span class="font-semibold">{{ homework.schedule_lesson.teacher.get_full_name }}</span>
+                                </div>
+                                <div class="flex justify-between">
                                     <span class="text-muted">Срок сдачи:</span>
-                                    <span class="font-semibold">{{ homework.due_date|date:"d.m.Y H:i" }}</span>
+                                    <span class="font-semibold {% if current_timestamp > due_date_timestamp %}text-danger{% endif %}">
+                                        {{ homework.due_date|date:"d.m.Y H:i" }}
+                                        {% if current_timestamp > due_date_timestamp %}
+                                        <span class="badge bg-danger ms-2">Просрочено</span>
+                                        {% endif %}
+                                    </span>
                                 </div>
                                 <div class="flex justify-between">
                                     <span class="text-muted">Опубликовано:</span>
                                     <span>{{ homework.created_at|date:"d.m.Y H:i" }}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-muted">Статус:</span>
-                                    <span class="badge {% if homework.due_date < today %}danger{% else %}success{% endif %}">
-                                        {% if homework.due_date < today %}Просрочено{% else %}Активно{% endif %}
-                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -92,28 +120,49 @@
                                 
                                 {% if submission.submission_file %}
                                     <div class="mb-3">
-                                        <h5 class="font-semibold mb-2">Файл:</h5>
-                                        <a href="{{ submission.submission_file.url }}" class="btn btn-outline" target="_blank">
-                                            <i class="bi bi-file-earmark"></i> Просмотреть файл
-                                        </a>
+                                        <h5 class="font-semibold mb-2">Ваш файл:</h5>
+                                        <div class="btn-group">
+                                            <a href="{% url 'view_submission_file' submission.id %}" 
+                                               target="_blank" 
+                                               class="btn btn-outline-success">
+                                                <i class="bi bi-eye"></i> Просмотреть файл
+                                            </a>
+                                            <a href="{% url 'view_submission_file' submission.id %}?action=download" 
+                                               class="btn btn-outline-success">
+                                                <i class="bi bi-download"></i> Скачать
+                                            </a>
+                                        </div>
+                                        <small class="text-muted d-block mt-2">
+                                            Файл: {{ submission.submission_file.name|slice:"20:" }}
+                                        </small>
                                     </div>
                                 {% endif %}
                             </div>
                             
-                            {% if homework.due_date > today %}
-                                <div class="flex gap-2">
-                                    <form method="post" action="{% url 'delete_submission' submission.id %}" class="inline">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-danger" onclick="return confirm('Удалить отправку?')">
-                                            <i class="bi bi-trash"></i> Удалить отправку
-                                        </button>
-                                    </form>
-                                </div>
+                            <!-- Если срок НЕ истек, показываем кнопки обновления -->
+                            {% if current_timestamp <= due_date_timestamp %}
+                            <div class="flex gap-2">
+                                <button type="button" class="btn btn-outline-primary" onclick="showUpdateForm()">
+                                    <i class="bi bi-pencil"></i> Обновить работу
+                                </button>
+                                <form method="post" action="{% url 'delete_submission' submission.id %}" class="inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger" onclick="return confirm('Удалить отправку? Вы сможете сдать работу заново.')">
+                                        <i class="bi bi-trash"></i> Удалить отправку
+                                    </button>
+                                </form>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                <span>Срок сдачи истек. Вы не можете изменять или удалять эту отправку.</span>
+                            </div>
                             {% endif %}
                             
                         {% else %}
-                            {% if homework.due_date > today %}
-                                <form method="post" enctype="multipart/form-data" action="{% url 'submit_homework' %}">
+                            <!-- Если срок НЕ истек, показываем форму сдачи -->
+                            {% if current_timestamp <= due_date_timestamp %}
+                                <form method="post" enctype="multipart/form-data" id="submissionForm" action="{% url 'submit_homework' %}" onsubmit="return validateHomeworkForm()">
                                     {% csrf_token %}
                                     <input type="hidden" name="homework_id" value="{{ homework.id }}">
                                     
@@ -125,7 +174,19 @@
                                     <div class="mb-3">
                                         <label for="submission_file" class="form-label">Или загрузите файл:</label>
                                         <input type="file" id="submission_file" name="submission_file" class="form-control">
-                                        <small class="form-hint">Максимальный размер файла: 10MB</small>
+                                        <small class="form-hint">Максимальный размер файла: 10MB. Поддерживаемые форматы: PDF, DOC, DOCX, TXT, ZIP, RAR, JPG, PNG, GIF</small>
+                                    </div>
+                                    
+                                    <div class="file-preview mb-3" id="filePreview" style="display: none;">
+                                        <div class="attachment-item">
+                                            <div class="attachment-icon">
+                                                <i class="bi bi-file-earmark"></i>
+                                            </div>
+                                            <div class="attachment-info">
+                                                <div class="attachment-name" id="fileName"></div>
+                                                <div class="attachment-size" id="fileSize"></div>
+                                            </div>
+                                        </div>
                                     </div>
                                     
                                     <div class="flex gap-2">
@@ -135,30 +196,86 @@
                                     </div>
                                 </form>
                             {% else %}
+                                <!-- Если срок истек и работы нет -->
                                 <div class="alert alert-danger">
                                     <i class="bi bi-exclamation-circle"></i>
-                                    Срок сдачи истек. Вы не можете сдать это задание.
+                                    <span>Срок сдачи истек. Вы не можете сдать это задание.</span>
+                                    <div class="mt-1">
+                                        Срок сдачи был: <strong>{{ homework.due_date|date:"d.m.Y H:i" }}</strong>
+                                    </div>
                                 </div>
                             {% endif %}
                         {% endif %}
                     </div>
                 </div>
+                
+                <!-- Форма обновления работы (скрытая) -->
+                {% if submission and current_timestamp <= due_date_timestamp %}
+                <div class="card mt-4" id="updateForm" style="display: none;">
+                    <div class="card-header">
+                        <h3 class="card-title mb-0">Обновить работу</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" enctype="multipart/form-data" id="updateSubmissionForm" action="{% url 'submit_homework' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="homework_id" value="{{ homework.id }}">
+                            
+                            <div class="mb-3">
+                                <label for="update_submission_text" class="form-label">Текст работы:</label>
+                                <textarea id="update_submission_text" name="submission_text" class="form-control" rows="6" placeholder="Введите текст работы...">{{ submission.submission_text }}</textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="update_submission_file" class="form-label">Файл работы:</label>
+                                <input type="file" id="update_submission_file" name="submission_file" class="form-control">
+                                <small class="form-hint">Оставьте пустым, если не хотите менять текущий файл</small>
+                            </div>
+                            
+                            {% if submission.submission_file %}
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i>
+                                <span>Текущий файл: {{ submission.submission_file.name|slice:"20:" }}</span>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="flex gap-2">
+                                <button type="submit" class="btn btn-primary" onclick="return validateUpdateForm()">
+                                    <i class="bi bi-save"></i> Сохранить изменения
+                                </button>
+                                <button type="button" class="btn btn-outline" onclick="hideUpdateForm()">
+                                    Отмена
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
             </div>
 
             <!-- Боковая панель -->
             <div>
                 <div class="card mb-4">
                     <div class="card-header">
-                        <h3 class="card-title mb-0">Дополнительно</h3>
+                        <h3 class="card-title mb-0">Информация</h3>
                     </div>
                     <div class="card-body">
                         <div class="space-y-3">
+                            <div>
+                                <p class="text-muted mb-1">Класс:</p>
+                                <p class="font-semibold">{{ homework.student_group.name }}</p>
+                            </div>
+                            
+                            <div>
+                                <p class="text-muted mb-1">Предмет:</p>
+                                <p class="font-semibold">{{ homework.schedule_lesson.subject.name }}</p>
+                            </div>
+                            
                             <div>
                                 <p class="text-muted mb-1">Учитель:</p>
                                 <p class="font-semibold">{{ homework.schedule_lesson.teacher.get_full_name }}</p>
                             </div>
                             
-                            {% if homework.due_date > today %}
+                            {% if current_timestamp <= due_date_timestamp %}
                                 <div class="alert alert-info">
                                     <i class="bi bi-info-circle"></i>
                                     <small>Осталось времени: {{ homework.due_date|timeuntil }}</small>
@@ -172,7 +289,7 @@
                                         <i class="bi bi-check-circle"></i> Сдано
                                     </span>
                                     <small class="d-block text-muted mt-1">{{ submission.submitted_at|date:"d.m.Y H:i" }}</small>
-                                {% elif homework.due_date < today %}
+                                {% elif current_timestamp > due_date_timestamp %}
                                     <span class="badge danger">
                                         <i class="bi bi-exclamation-circle"></i> Просрочено
                                     </span>
@@ -185,42 +302,274 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Быстрые ссылки -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title mb-0">Быстрые действия</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'student_homework' %}" class="btn btn-outline">
+                                <i class="bi bi-list"></i> Все задания
+                            </a>
+                            
+                            {% if homework.attachment %}
+                            <div class="btn-group">
+                                <a href="{% url 'view_homework_file' homework.id %}" 
+                                   target="_blank" 
+                                   class="btn btn-outline-primary">
+                                    <i class="bi bi-eye"></i> Просмотреть файл
+                                </a>
+                                <a href="{% url 'view_homework_file' homework.id %}?action=download" 
+                                   class="btn btn-outline-secondary">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            </div>
+                            {% endif %}
+                            
+                            {% if submission %}
+                                {% if submission.submission_file %}
+                                <div class="btn-group">
+                                    <a href="{% url 'view_submission_file' submission.id %}" 
+                                       target="_blank" 
+                                       class="btn btn-outline-success">
+                                        <i class="bi bi-eye"></i> Ваш файл
+                                    </a>
+                                    <a href="{% url 'view_submission_file' submission.id %}?action=download" 
+                                       class="btn btn-outline-success">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                </div>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
 </div>
+
+<!-- Модальное окно для предпросмотра файлов -->
+<div class="modal fade file-preview-modal" id="filePreviewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Просмотр файла</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <iframe id="filePreviewFrame" style="width: 100%; height: 70vh; border: none;"></iframe>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endwith %}
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Добавляем обработчик для формы
+// Предпросмотр файла при выборе
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form[action*="submit_homework"]');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            const textarea = this.querySelector('#submission_text');
-            const fileInput = this.querySelector('#submission_file');
-            
-            // Проверяем, что хоть что-то заполнено
-            if (!textarea.value.trim() && !fileInput.files.length) {
-                e.preventDefault();
-                alert('Заполните текст работы или загрузите файл');
-                return false;
-            }
-            
-            // Проверяем размер файла
-            if (fileInput.files.length) {
-                const fileSize = fileInput.files[0].size;
-                const maxSize = 10 * 1024 * 1024; // 10MB
+    const fileInput = document.getElementById('submission_file');
+    const updateFileInput = document.getElementById('update_submission_file');
+    const filePreview = document.getElementById('filePreview');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
                 
-                if (fileSize > maxSize) {
-                    e.preventDefault();
+                fileName.textContent = file.name;
+                fileSize.textContent = `${fileSizeMB} MB`;
+                filePreview.style.display = 'block';
+                
+                // Проверка размера файла
+                if (file.size > 10 * 1024 * 1024) {
                     alert('Файл слишком большой. Максимальный размер: 10MB');
-                    return false;
+                    this.value = '';
+                    filePreview.style.display = 'none';
+                }
+                
+                // Проверка типа файла
+                const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt', '.zip', '.rar', '.jpg', '.jpeg', '.png', '.gif'];
+                const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+                
+                if (!allowedExtensions.includes(fileExt)) {
+                    alert('Неподдерживаемый формат файла. Разрешены: PDF, DOC, DOCX, TXT, ZIP, RAR, JPG, PNG, GIF');
+                    this.value = '';
+                    filePreview.style.display = 'none';
+                }
+            } else {
+                filePreview.style.display = 'none';
+            }
+        });
+    }
+    
+    // Проверка размера файла для формы обновления
+    if (updateFileInput) {
+        updateFileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                
+                // Проверка размера файла
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('Файл слишком большой. Максимальный размер: 10MB');
+                    this.value = '';
                 }
             }
         });
     }
 });
+
+// Функция валидации формы сдачи
+function validateHomeworkForm() {
+    const textarea = document.getElementById('submission_text');
+    const fileInput = document.getElementById('submission_file');
+    
+    // Проверяем, что хоть что-то заполнено
+    if (!textarea.value.trim() && !fileInput.files.length) {
+        alert('Заполните текст работы или загрузите файл');
+        return false;
+    }
+    
+    return true;
+}
+
+// Функция валидации формы обновления
+function validateUpdateForm() {
+    const fileInput = document.getElementById('update_submission_file');
+    
+    // Проверяем размер файла (если выбран)
+    if (fileInput.files.length) {
+        const fileSize = fileInput.files[0].size;
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        
+        if (fileSize > maxSize) {
+            alert('Файл слишком большой. Максимальный размер: 10MB');
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+// Функции для управления формой обновления
+function showUpdateForm() {
+    document.getElementById('updateForm').style.display = 'block';
+    window.scrollTo({
+        top: document.getElementById('updateForm').offsetTop - 100,
+        behavior: 'smooth'
+    });
+}
+
+function hideUpdateForm() {
+    document.getElementById('updateForm').style.display = 'none';
+}
+
+// Функция для предпросмотра файлов в модальном окно
+function previewFile(fileUrl, fileName) {
+    const modal = document.getElementById('filePreviewModal');
+    const frame = document.getElementById('filePreviewFrame');
+    const modalTitle = modal.querySelector('.modal-title');
+    
+    modalTitle.textContent = fileName;
+    frame.src = fileUrl;
+    
+    // Показываем модальное окно
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
+// Добавляем обработчики для всех ссылок с предпросмотром
+document.querySelectorAll('[data-preview-file]').forEach(link => {
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const fileUrl = this.href;
+        const fileName = this.dataset.filename || 'Файл';
+        previewFile(fileUrl, fileName);
+    });
+});
 </script>
+
+<style>
+.file-preview-modal .modal-dialog {
+    max-width: 90%;
+    max-height: 90vh;
+}
+
+.file-preview-modal .modal-content {
+    height: 85vh;
+}
+
+.attachment-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    border: 1px solid #dee2e6;
+}
+
+.attachment-icon {
+    width: 40px;
+    height: 40px;
+    background: #e9ecef;
+    border-radius: 0.375rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    color: #6c757d;
+}
+
+.attachment-info {
+    flex: 1;
+}
+
+.attachment-name {
+    font-weight: 500;
+    color: #212529;
+    margin-bottom: 0.25rem;
+}
+
+.attachment-size {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.btn-group {
+    display: inline-flex;
+    gap: 0.25rem;
+}
+
+.badge {
+    padding: 0.25em 0.6em;
+    font-size: 0.75em;
+    font-weight: 600;
+    border-radius: 0.375rem;
+}
+
+.badge.success {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge.danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.badge.warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+</style>
 {% endblock %}
