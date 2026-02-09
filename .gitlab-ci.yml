@@ -50,8 +50,7 @@ mpted-models-check:
     - |
       cat > check_mpted.py << 'EOF'
       try:
-          # Пробуем импортировать модели из MPTed_base
-          from MPTed_base import models
+          from api import models
           print("✅ Приложение MPTed_base импортировано")
           
           # Пробуем получить список моделей
