@@ -34,8 +34,8 @@ jobs: # этапы
 
       - name: Check Django migrations
         run: |
-          source $VENV_PATH/bin/activate
-          pylint --errors-only **/*.py --ignore-paths=$VENV_PATH
+          source .venv/bin/activate
+          pylint --errors-only **/*.py --ignore-paths=.venv
           echo "Синтаксических ошибок не найдено"
 
   test:
