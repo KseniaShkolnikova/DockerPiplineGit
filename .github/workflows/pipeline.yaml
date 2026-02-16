@@ -21,7 +21,7 @@ jobs: # этапы
       - name: Create venv and install libs
         run: | # каждый раз необходимо активировать венв, так как каждая задача это как новая консолька
           python3 -m venv .venv
-          source .vanev/bin/activate
+          source .venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
 
@@ -53,7 +53,7 @@ jobs: # этапы
       - name: Create venv and install libs
         run: | # каждый раз необходимо активировать венв, так как каждая задача это как новая консолька
           python3 -m venv .venv
-          source .vanev/bin/activate
+          source .venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
       - name: Check Django static file
