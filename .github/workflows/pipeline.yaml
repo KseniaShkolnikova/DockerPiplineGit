@@ -27,13 +27,13 @@ jobs: # этапы
 
       - name: Check Django settings
         run: |
-          source $VENV_PATH/bin/activate 
+          source .venv/bin/activate 
           python3 manage.py check
           echo "Проект успешно собирается"
 
       - name: Check Django migrations
         run: |
-          source $VENV_PATH/bin/activate 
+          source .venv/bin/activate 
           python3 manage.py malemigrations --check --dry-run
           echo "Миграции валидны"
 
