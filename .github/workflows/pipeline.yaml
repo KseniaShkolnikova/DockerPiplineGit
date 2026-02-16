@@ -59,7 +59,7 @@ jobs: # этапы
           pip install -r requirements.txt
       - name: Check Django model
         run: |
-          source $VENV_PATH/bin/activate
+          source .venv/bin/activate
           python3 manage.py shell -c "from django.apps import apps; print([m.__name__ for m in apps.get_app_config('api').get_models()])"
 
       - name: Check Django static and collict
