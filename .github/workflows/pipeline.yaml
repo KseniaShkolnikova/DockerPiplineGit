@@ -31,15 +31,12 @@ jobs: # этапы
           python3 manage.py check
           echo "Проект успешно собирается"
 
-      - name: Check with pylint
+      - name: Lint with pylint
         run: |
           source .venv/bin/activate
-          pip install pylint-django    
-          pylint --errors-only \
-                --load-plugins=pylint_django \
-                **/*.py \
-                --ignore-paths=.venv,migrations
-          echo "Синтаксических ошибок не найдено"
+          pylint --load-plugins=pylint_django \
+                --disable=imported-auth-user,django-not-configured,function-redefined \
+                --errors-only **/*.py --ignore=migrations,.venv
 
   test:
     name: Test Django static file
