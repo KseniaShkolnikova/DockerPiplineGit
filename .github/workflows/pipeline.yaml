@@ -65,6 +65,7 @@ jobs: # этапы
 
       - name: Check Django static and collict
         run: |
+          source .venv/bin/activate
           mkdir -p staticfiles
           python3 manage.py collectstatic --noinput
           echo "Собрано статических файлов:"
