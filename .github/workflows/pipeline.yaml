@@ -58,7 +58,9 @@ jobs: # этапы
           pip install -r requirements.txt
       - name: Check Django static file
         run: |
-          python manage.py collectstatic --noinput --dry-run
-          echo "Статик файлы валидны"
+          source .venv/bin/activate
+          echo "Проверка статик-файлов Django"
+          python3 manage.py collectstatic --noinput --dry-run
+          echo "Статик-файлы валидны"
 
   
