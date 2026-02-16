@@ -55,7 +55,12 @@ urlpatterns = [
     path('homework/<int:homework_id>/view_file/', 
          views.view_homework_file, 
          name='view_homework_file'),
-    
+     # Импорт/экспорт учеников
+# Импорт/экспорт учеников
+     path('admin/students/export/', views.export_students_excel, name='export_students_excel'),
+     path('admin/students/export/template/', views.export_students_template, name='export_students_template'),
+     path('admin/students/import/', views.import_students_excel, name='import_students_excel'),
+     path('admin/groups/export/', views.export_groups_excel, name='export_groups_excel'),
     path('submissions/<int:submission_id>/view_file/', 
          views.view_submission_file, 
          name='view_submission_file'),

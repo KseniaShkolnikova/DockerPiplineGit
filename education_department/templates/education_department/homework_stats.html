@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Статистика домашних заданий - MPTed{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "education_department/includes/education_sidebar.html" %}
+
+    <main class="main-content">
+        <div class="content-header">
+            <div class="header-left">
+                <h1 class="content-title">Статистика домашних заданий</h1>
+                <p class="content-subtitle">Просмотр активности по ДЗ (без редактирования)</p>
+            </div>
+        </div>
+
+        <!-- Фильтры -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="GET" class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">Период</label>
+                        <select name="period" class="form-select">
+                            <option value="7"  {% if filters.period == "7" %}selected{% endif %}>Последние 7 дней</option>
+                            <option value="30" {% if filters.period == "30" %}selected{% endif %}>Последние 30 дней</option>
+                            <option value="90" {% if filters.period == "90" %}selected{% endif %}>Последние 90 дней</option>
+                            <option value="all" {% if filters.period == "all" %}selected{% endif %}>За всё время</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Класс</label>
+                        <select name="group" class="form-select">
+                            <option value="">Все классы</option>
+                            {% for g in groups %}
+                                <option value="{{ g.id }}" {% if filters.group|stringformat:"s" == g.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ g.name }} ({{ g.year }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Предмет</label>
+                        <select name="subject" class="form-select">
+                            <option value="">Все предметы</option>
+                            {% for s in subjects %}
+                                <option value="{{ s.id }}" {% if filters.subject|stringformat:"s" == s.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ s.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Сдачи</label>
+                        <select name="status" class="form-select">
+                            <option value="" {% if not filters.status %}selected{% endif %}>Любой</option>
+                            <option value="submitted" {% if filters.status == "submitted" %}selected{% endif %}>Есть сдачи</option>
+                            <option value="not_submitted" {% if filters.status == "not_submitted" %}selected{% endif %}>Нет сдач</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-1 d-grid">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="bi bi-funnel"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Статистика -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon primary">
+                        <i class="bi bi-journal-text"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ total_homeworks }}</div>
+                <div class="stat-label">Домашних заданий</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon info">
+                        <i class="bi bi-upload"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ submissions_total }}</div>
+                <div class="stat-label">Сдач всего</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon success">
+                        <i class="bi bi-people"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ students_submitted }}</div>
+                <div class="stat-label">Ученики сдавали</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon warning">
+                        <i class="bi bi-graph-up"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ avg_submissions_per_hw }}</div>
+                <div class="stat-label">Сдач на 1 ДЗ (среднее)</div>
+            </div>
+        </div>
+
+        <!-- Таблица последних ДЗ -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Последние домашние задания</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Дата</th>
+                                <th>Класс</th>
+                                <th>Предмет</th>
+                                <th>Заголовок</th>
+                                <th>Срок</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for hw in latest_homeworks %}
+                            <tr>
+                                <td>{{ hw.created_at|date:"d.m.Y H:i" }}</td>
+                                <td>{{ hw.student_group.name }} ({{ hw.student_group.year }})</td>
+                                <td>{{ hw.schedule_lesson.subject.name }}</td>
+                                <td>
+                                    <strong>{{ hw.title }}</strong>
+                                    {% if hw.description %}
+                                        <div class="text-muted small">{{ hw.description|truncatechars:80 }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>{{ hw.due_date|date:"d.m.Y H:i" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4">
+                                    <i class="bi bi-journal-x" style="font-size: 2rem; color: #dee2e6;"></i>
+                                    <p class="text-muted mt-2">Нет данных по выбранным фильтрам</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<style>
+/* под твой стиль */
+.stat-icon.primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.stat-icon.success { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); }
+.stat-icon.warning { background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); }
+.stat-icon.info { background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%); }
+</style>
+{% endblock %}

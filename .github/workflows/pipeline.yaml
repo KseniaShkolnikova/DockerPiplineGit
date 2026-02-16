@@ -1,0 +1,64 @@
+name: Django check
+
+on: # когда срабатывает
+  push:
+    branches: [master] # на какрй ветке срабатывает
+  #pull_request:
+
+jobs: # этапы
+  validate:
+    name: validate Django project
+    runs-on: ubuntu-latest # раннер
+    steps: # шаги
+      - name: Check out repository
+        uses: actions/checkout@v6 # действие с версией
+
+      - name: Set up python3
+        uses: actions/setup-python@v6
+        with: # буквально меняем параметры в функции
+          python-version: '3.13' # версия питона на ноуте
+
+      - name: Create venv and install libs
+        run: | # каждый раз необходимо активировать венв, так как каждая задача это как новая консолька
+          python3 -m venv .venv
+          source .vanev/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Check Django settings
+        run: |
+          source $VENV_PATH/bin/activate 
+          python3 manage.py check
+          echo "Проект успешно собирается"
+
+      - name: Check Django migrations
+        run: |
+          source $VENV_PATH/bin/activate 
+          python3 manage.py malemigrations --check --dry-run
+          echo "Миграции валидны"
+
+  test:
+    name: Test Django static file
+    runs-on: ubuntu-latest # раннер
+    needs: validate
+    steps: # шаги
+      - name: Check out repository
+        uses: actions/checkout@v6 # действие с версией
+
+      - name: Set up python3
+        uses: actions/setup-python@v6
+        with: # буквально меняем параметры в функции
+          python-version: '3.13' # версия питона на ноуте
+
+      - name: Create venv and install libs
+        run: | # каждый раз необходимо активировать венв, так как каждая задача это как новая консолька
+          python3 -m venv .venv
+          source .vanev/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Check Django static file
+        run: |
+          python manage.py collectstatic --noinput --dry-run
+          echo "Статик файлы валидны"
+
+  

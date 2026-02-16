@@ -7,64 +7,77 @@
     {% include "education_department/includes/education_sidebar.html" %}
     
     <main class="main-content">
-        <!-- Заголовок -->
-        <div class="content-header">
-            <div class="header-left">
-                <h1 class="content-title">Оценки по группам</h1>
-                <p class="content-subtitle">Статистика успеваемости по учебным классам</p>
-            </div>
-        </div>
 
-        <!-- Статистика -->
+        <div class="content-header">
+    <div class="header-left">
+        <h1 class="content-title">Оценки по группам</h1>
+        <p class="content-subtitle">Статистика успеваемости по учебным классам</p>
+    </div>
+
+    <div class="header-right">
+        <a href="{% url 'education_department:grades_school_report_pdf' %}" class="btn btn-outline-primary">
+            <i class="bi bi-file-earmark-pdf"></i> Выгрузить PDF-отчёт
+        </a>
+    </div>
+</div>
+
+
         <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-header">
-                    <div class="stat-icon primary">
-                        <i class="bi bi-collection"></i>
-                    </div>
-                </div>
-                <div class="stat-value">{{ groups_stats|length }}</div>
-                <div class="stat-label">Всего групп</div>
-            </div>
-            
-            <div class="stat-card">
-                <div class="stat-header">
-                    <div class="stat-icon success">
-                        <i class="bi bi-people"></i>
-                    </div>
-                </div>
-                <div class="stat-value">
-                    {% with total=0 %}
-                        {% for stat in groups_stats %}
-                            {% widthratio stat.student_count 1 1 as count %}
-                            {% with total=total|add:count %}
-                            {% endwith %}
-                        {% endfor %}
-                        {{ total }}
-                    {% endwith %}
-                </div>
-                <div class="stat-label">Всего учеников</div>
-            </div>
-            
-            <div class="stat-card">
-                <div class="stat-header">
-                    <div class="stat-icon warning">
-                        <i class="bi bi-journal-text"></i>
-                    </div>
-                </div>
-                <div class="stat-value">
-                    {% with total=0 %}
-                        {% for stat in groups_stats %}
-                            {% widthratio stat.grades_count 1 1 as count %}
-                            {% with total=total|add:count %}
-                            {% endwith %}
-                        {% endfor %}
-                        {{ total }}
-                    {% endwith %}
-                </div>
-                <div class="stat-label">Всего оценок</div>
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon primary">
+                <i class="bi bi-collection"></i>
             </div>
         </div>
+        <div class="stat-value">{{ groups_stats|length }}</div>
+        <div class="stat-label">Всего групп</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon success">
+                <i class="bi bi-people"></i>
+            </div>
+        </div>
+        <div class="stat-value">{{ total_students }}</div>
+        <div class="stat-label">Всего учеников</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon warning">
+                <i class="bi bi-journal-text"></i>
+            </div>
+        </div>
+        <div class="stat-value">{{ total_grades }}</div>
+        <div class="stat-label">Всего оценок</div>
+    </div>
+
+    {# небольшое полезное добавление #}
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon primary">
+                <i class="bi bi-star-half"></i>
+            </div>
+        </div>
+        <div class="stat-value">
+            {% if overall_avg and overall_avg > 0 %}{{ overall_avg }}{% else %}—{% endif %}
+        </div>
+        <div class="stat-label">Средний балл (в целом)</div>
+    </div>
+
+    {# маленький “контроль качества” #}
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon warning">
+                <i class="bi bi-person-x"></i>
+            </div>
+        </div>
+        <div class="stat-value">{{ groups_without_curator }}</div>
+        <div class="stat-label">Групп без куратора</div>
+    </div>
+</div>
+
 
         <!-- Таблица групп -->
         <div class="card">
@@ -118,7 +131,7 @@
                                     <span class="badge {% if stat.avg_grade >= 4.5 %}bg-success
                                         {% elif stat.avg_grade >= 3.5 %}bg-warning text-dark
                                         {% else %}bg-danger{% endif %}">
-                                        {{ stat.avg_grade }}
+                                        {{ stat.avg_grade|floatformat:1 }}
                                     </span>
                                     {% else %}
                                     <span class="badge bg-secondary">Нет данных</span>

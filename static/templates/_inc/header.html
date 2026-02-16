@@ -1,6 +1,6 @@
 <!-- Навигационная панель -->
 <nav class="admin-navbar">
-    <div class="nav-left">
+    <div class="nav-left" >
         {% if request.user.is_superuser or request.user.groups.all.0.name == 'admin' %}
             <!-- АДМИН ПАНЕЛЬ -->
             <a href="/admin-dashboard/" class="logo">
@@ -29,6 +29,11 @@
                     <i class="bi bi-person-badge"></i>
                     Учителя
                 </a>
+                <!-- Добавьте в меню администратора -->
+<a href="{% url 'backup_service:backup_list' %}" class="nav-link">
+    <i class="bi bi-database"></i>
+    Резервные копии
+</a>
             </div>
         
         {% elif request.user.groups.all.0.name == 'education_department' %}
@@ -127,20 +132,7 @@
     </div>
     
     <div class="nav-right">
-        <!-- Поиск (только для админа, учебного отдела и учителя) -->
-        {% if request.user.is_superuser or request.user.groups.all.0.name == 'admin' or request.user.groups.all.0.name == 'education_department' or request.user.groups.all.0.name == 'teacher' %}
-            <div class="search-box">
-                <i class="bi bi-search search-icon"></i>
-                <input type="text" class="search-input" placeholder="Поиск...">
-            </div>
-        {% endif %}
-        
-        <!-- Уведомления (только для админа, учебного отдела и учителя) -->
-        {% if request.user.is_superuser or request.user.groups.all.0.name == 'admin' or request.user.groups.all.0.name == 'education_department' or request.user.groups.all.0.name == 'teacher' %}
-            <button class="btn btn-icon" id="notificationsBtn">
-                <i class="bi bi-bell"></i>
-            </button>
-        {% endif %}
+    
         
         <div class="profile-dropdown">
             <button class="profile-btn" id="profileDropdown">
@@ -170,10 +162,6 @@
                             Учитель
                         {% elif request.user.groups.all.0.name == 'student' %}
                             Ученик
-                        {% elif request.user.groups.all.0.name == 'parent' %}
-                            Родитель
-                        {% else %}
-                            Пользователь
                         {% endif %}
                     </div>
                 </div>
@@ -187,27 +175,8 @@
                         <i class="bi bi-person"></i>
                         Мой профиль
                     </a>
-
-                {% elif request.user.is_superuser or request.user.groups.all.0.name == 'admin' %}
-                    <a href="/admin-dashboard/profile/" class="dropdown-item">
-                        <i class="bi bi-person"></i>
-                        Профиль администратора
-                    </a>
-                {% else %}
-                    <a href="#" class="dropdown-item">
-                        <i class="bi bi-person"></i>
-                        Мой профиль
-                    </a>
                 {% endif %}
                 
-                <!-- Настройки для админа и учебного отдела -->
-                {% if request.user.is_superuser or request.user.groups.all.0.name == 'admin' %}
-                    <a href="/admin-dashboard/settings/" class="dropdown-item">
-                        <i class="bi bi-gear"></i>
-                        Настройки системы
-                    </a>
-
-                {% endif %}
                 
                 <!-- Переключение темы для всех -->
                 <a href="#" class="dropdown-item" id="themeToggle">

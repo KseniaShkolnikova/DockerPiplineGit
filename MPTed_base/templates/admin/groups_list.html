@@ -20,8 +20,14 @@
                 <a href="{% url 'group_create' %}" class="btn btn-success">
                     <i class="bi bi-plus-circle"></i> Создать класс
                 </a>
+
+    <!-- Новая кнопка экспорта -->
+    <a href="{% url 'export_groups_excel' %}" class="btn btn-info" target="_blank">
+        <i class="bi bi-file-earmark-excel"></i> Экспорт в Excel
+    </a>
             </div>
         </div>
+        
 
         <!-- Таблица классов -->
         <div class="table-container">

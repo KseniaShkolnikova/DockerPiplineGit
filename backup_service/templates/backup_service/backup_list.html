@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Резервные копии БД{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    {% include "includes/sidebar.html" %}
+    
+    <main class="main-content">
+        <div class="content-header">
+            <div>
+                <h1 class="content-title">Резервные копии базы данных</h1>
+                <p class="content-subtitle">Создание, восстановление и управление бэкапами</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="{% url 'backup_service:backup_create' %}" class="btn btn-success">
+                    <i class="bi bi-plus-circle"></i> Создать бэкап
+                </a>
+            </div>
+        </div>
+
+        <!-- Статистика -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon" style="background: var(--info);">
+                        <i class="bi bi-database"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ total_backups }}</div>
+                <div class="stat-label">Всего бэкапов</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon" style="background: var(--success);">
+                        <i class="bi bi-hdd-stack"></i>
+                    </div>
+                </div>
+                <div class="stat-value">{{ total_size_display }}</div>
+                <div class="stat-label">Общий размер</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon" style="background: var(--warning);">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
+                </div>
+                <div class="stat-value">
+                    {% if last_backup %}
+                        {{ last_backup.created_at|timesince }}
+                    {% else %}
+                        Нет
+                    {% endif %}
+                </div>
+                <div class="stat-label">Последний бэкап</div>
+            </div>
+        </div>
+
+        <!-- Таблица бэкапов -->
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Название</th>
+                        <th>Размер</th>
+                        <th>Статус</th>
+                        <th>Дата</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for backup in backups %}
+                    <tr>
+                        <td>#{{ backup.id }}</td>
+                        <td>
+                            <strong>{{ backup.name }}</strong>
+                            {% if backup.description %}
+                            <br><small>{{ backup.description|truncatechars:50 }}</small>
+                            {% endif %}
+                        </td>
+
+                        <td>{{ backup.get_file_size_display }}</td>
+                        <td>
+                            <span class="badge {% if backup.status == 'completed' %}success{% elif backup.status == 'failed' %}danger{% elif backup.status == 'restoring' %}warning{% else %}secondary{% endif %}">
+                                {{ backup.get_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ backup.created_at|date:"d.m.Y H:i" }}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{% url 'backup_service:backup_detail' backup.id %}" class="btn-icon" title="Подробнее">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if backup.status == 'completed' %}
+                                <a href="{% url 'backup_service:backup_download' backup.id %}" class="btn-icon" title="Скачать">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                                <a href="{% url 'backup_service:backup_restore' backup.id %}" class="btn-icon warning" title="Восстановить">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </a>
+                                {% endif %}
+                                <form method="post" action="{% url 'backup_service:backup_delete' backup.id %}" class="inline-form" onsubmit="return confirm('Удалить резервную копию?')">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-icon danger" title="Удалить">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 3rem;">
+                            <i class="bi bi-database-slash" style="font-size: 2rem; color: var(--text-secondary);"></i>
+                            <p style="margin-top: 1rem;">Нет резервных копий</p>
+                            <a href="{% url 'backup_service:backup_create' %}" class="btn btn-primary">Создать первую копию</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+</div>
+{% endblock %}

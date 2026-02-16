@@ -27,5 +27,5 @@ urlpatterns = [
     path('teacher/', include('teacher_portal.urls')),
     path('education/', include('education_department.urls')),
     path('schedule/', include('schedule.urls')),
-  
+    path('admin-dashboard/backups/', include('backup_service.urls', namespace='backup_service')),
 ]

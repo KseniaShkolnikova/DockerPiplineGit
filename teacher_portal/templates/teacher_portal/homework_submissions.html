@@ -9,6 +9,181 @@
     .student-row:hover {
         background-color: #f8f9fa;
     }
+    <style>
+    /* ... существующие стили ... */
+    
+    /* Улучшенные стили для кнопок оценок */
+    .grade-selector {
+        display: flex;
+        gap: 12px;
+    }
+    
+    .grade-btn {
+        width: 60px;
+        height: 60px;
+        border: 3px solid transparent;
+        border-radius: 16px;
+        background: white;
+        font-weight: 700;
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .grade-btn:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+    
+    .grade-btn.selected {
+        transform: scale(1.1);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        border-width: 3px;
+    }
+    
+    .grade-btn.selected::after {
+        content: '✓';
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        width: 24px;
+        height: 24px;
+        background: #198754;
+        color: white;
+        border-radius: 50%;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid white;
+    }
+    
+    .grade-btn.poor { 
+        border-color: #dc3545;
+        background: linear-gradient(145deg, #fff, #fff1f0);
+        color: #dc3545;
+    }
+    .grade-btn.poor.selected { 
+        background: #dc3545;
+        color: white;
+    }
+    
+    .grade-btn.satisfactory { 
+        border-color: #fd7e14;
+        background: linear-gradient(145deg, #fff, #fff4e6);
+        color: #fd7e14;
+    }
+    .grade-btn.satisfactory.selected { 
+        background: #fd7e14;
+        color: white;
+    }
+    
+    .grade-btn.good { 
+        border-color: #0d6efd;
+        background: linear-gradient(145deg, #fff, #e7f1ff);
+        color: #0d6efd;
+    }
+    .grade-btn.good.selected { 
+        background: #0d6efd;
+        color: white;
+    }
+    
+    .grade-btn.excellent { 
+        border-color: #198754;
+        background: linear-gradient(145deg, #fff, #e8f3ec);
+        color: #198754;
+    }
+    .grade-btn.excellent.selected { 
+        background: #198754;
+        color: white;
+    }
+    
+    .grade-value {
+        position: relative;
+        z-index: 1;
+    }
+    
+    /* Улучшенные стили для файлового вложения */
+    .file-attachment {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #dee2e6;
+        text-decoration: none;
+        color: #212529;
+        transition: all 0.2s;
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    .file-attachment:hover {
+        background: #f8f9fa;
+        border-color: #0d6efd;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(13,110,253,0.1);
+    }
+    
+    .file-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #e7f1ff;
+        border-radius: 10px;
+    }
+    
+    .file-info {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .file-info div:first-child {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    /* Стили для текста работы */
+    .submission-content {
+        max-height: 250px;
+        overflow-y: auto;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        background: #fafbfc;
+    }
+    
+    .submission-content p:last-child {
+        margin-bottom: 0;
+    }
+    
+    /* Анимация для модального окна */
+    .modal.fade .modal-dialog {
+        transition: transform 0.3s ease-out;
+    }
+    
+    .modal.show .modal-dialog {
+        transform: none;
+    }
+    
+    /* Стили для баджей в таблице */
+    .grade-badge {
+        font-size: 1.1rem;
+        padding: 0.5rem 1.2rem;
+        border-radius: 30px;
+        font-weight: 600;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+    
+    .grade-badge.bg-success { background: linear-gradient(145deg, #198754, #157347) !important; }
+    .grade-badge.bg-info { background: linear-gradient(145deg, #0dcaf0, #0baccc) !important; }
+    .grade-badge.bg-warning { background: linear-gradient(145deg, #ffc107, #e6ad07) !important; color: #000 !important; }
+    .grade-badge.bg-danger { background: linear-gradient(145deg, #dc3545, #c12b3a) !important; }
     
     .grade-badge {
         font-size: 1.1rem;
@@ -213,45 +388,116 @@
 </div>
 
 <!-- Модальное окно для просмотра работы -->
-<div class="modal fade" id="workModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Работа ученика: <span id="modalStudentName"></span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<div class="modal fade" id="workModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light border-bottom-0 py-3">
+                <div>
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-journal-text me-2 text-primary"></i>
+                        Проверка работы
+                    </h5>
+                    <p class="text-muted small mb-0" id="modalStudentName"></p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
             </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <h6>Текст работы:</h6>
-                    <div id="modalSubmissionText" class="submission-content"></div>
-                    <div id="noTextMessage" class="alert alert-info" style="display: none;">
-                        Текст работы не предоставлен
+            
+            <div class="modal-body pt-0">
+                <!-- Информация о работе -->
+                <div class="bg-light rounded-3 p-3 mb-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-info-circle-fill text-primary me-2"></i>
+                        <h6 class="fw-bold mb-0">Информация о работе</h6>
+                    </div>
+                    <div class="row g-2 small">
+                        <div class="col-md-6">
+                            <span class="text-muted">Дата сдачи:</span>
+                            <span class="ms-2 fw-medium" id="submissionDate"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <span class="text-muted">Статус:</span>
+                            <span class="ms-2">
+                                <span class="badge bg-success bg-opacity-10 text-success px-3 py-1 rounded-pill" id="submissionStatus">
+                                    <i class="bi bi-check-circle-fill me-1 small"></i>Сдано
+                                </span>
+                            </span>
+                        </div>
                     </div>
                 </div>
                 
+                <!-- Текст работы -->
+                <div class="mb-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-file-text me-2 text-primary"></i>
+                        <h6 class="fw-bold mb-0">Текст работы</h6>
+                    </div>
+                    <div class="submission-content bg-white border rounded-3 p-3" style="min-height: 150px;">
+                        <div id="modalSubmissionText" class="text-dark"></div>
+                        <div id="noTextMessage" class="text-center text-muted py-4" style="display: none;">
+                            <i class="bi bi-file-earmark-x fs-1 d-block mb-2 opacity-50"></i>
+                            <span>Текст работы не предоставлен</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Прикрепленный файл -->
                 <div id="fileSection" class="mb-3" style="display: none;">
-                    <h6>Прикрепленный файл:</h6>
-                    <a id="fileLink" href="#" class="file-attachment" target="_blank">
-                        <i class="bi bi-file-earmark me-2"></i>
-                        <span id="fileName"></span>
-                    </a>
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-paperclip me-2 text-primary"></i>
+                        <h6 class="fw-bold mb-0">Прикрепленный файл</h6>
+                    </div>
+                    <div class="bg-light rounded-3 p-2">
+                        <a id="fileLink" href="#" class="file-attachment d-inline-flex align-items-center text-decoration-none p-2" target="_blank">
+                            <div class="file-icon me-2">
+                                <i class="bi bi-file-earmark fs-4 text-primary"></i>
+                            </div>
+                            <div class="file-info">
+                                <div class="fw-medium text-dark" id="fileName"></div>
+                                <small class="text-muted" id="fileSize"></small>
+                            </div>
+                            <i class="bi bi-box-arrow-up-right ms-3 text-primary opacity-75"></i>
+                        </a>
+                    </div>
                 </div>
                 
-                <div class="mb-3">
-                    <h6>Оценка:</h6>
-                    <div class="grade-selector mb-3">
-                        <button type="button" class="grade-btn poor" onclick="selectGradeInModal(2)">2</button>
-                        <button type="button" class="grade-btn satisfactory" onclick="selectGradeInModal(3)">3</button>
-                        <button type="button" class="grade-btn good" onclick="selectGradeInModal(4)">4</button>
-                        <button type="button" class="grade-btn excellent" onclick="selectGradeInModal(5)">5</button>
+                <!-- Оценка -->
+                <div class="mt-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-star-fill me-2 text-warning"></i>
+                        <h6 class="fw-bold mb-0">Выставление оценки</h6>
                     </div>
-                    <textarea id="gradeComment" class="form-control" placeholder="Комментарий к оценке (необязательно)" rows="3"></textarea>
+                    
+                    <div class="bg-light rounded-3 p-3">
+                        <label class="form-label text-muted small mb-2">Выберите оценку:</label>
+                        <div class="grade-selector mb-3 d-flex justify-content-between" style="max-width: 280px;">
+                            <button type="button" class="grade-btn poor" onclick="selectGradeInModal(2)" title="Неудовлетворительно">
+                                <span class="grade-value">2</span>
+                            </button>
+                            <button type="button" class="grade-btn satisfactory" onclick="selectGradeInModal(3)" title="Удовлетворительно">
+                                <span class="grade-value">3</span>
+                            </button>
+                            <button type="button" class="grade-btn good" onclick="selectGradeInModal(4)" title="Хорошо">
+                                <span class="grade-value">4</span>
+                            </button>
+                            <button type="button" class="grade-btn excellent" onclick="selectGradeInModal(5)" title="Отлично">
+                                <span class="grade-value">5</span>
+                            </button>
+                        </div>
+                        
+                        <label class="form-label text-muted small mb-2">Комментарий:</label>
+                        <textarea id="gradeComment" class="form-control form-control-sm" 
+                                  placeholder="Добавьте комментарий к оценке (необязательно)" 
+                                  rows="2" style="resize: none;"></textarea>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-                <button type="button" class="btn btn-primary" id="saveGradeBtn" onclick="saveGradeFromModal()">
-                    <i class="bi bi-save"></i> Сохранить оценку
+            
+            <div class="modal-footer bg-light border-0 py-2">
+                <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-1"></i>Отмена
+                </button>
+                <button type="button" class="btn btn-primary px-4" id="saveGradeBtn" onclick="saveGradeFromModal()" disabled>
+                    <i class="bi bi-check-lg me-1"></i>Сохранить оценку
                 </button>
             </div>
         </div>
@@ -263,10 +509,6 @@
 let currentStudentId = null;
 let currentSubmissionId = null;
 let selectedGrade = null;
-let submissionText = '';
-let hasFile = false;
-let fileUrl = '';
-let fileName = '';
 
 // Функция для получения CSRF токена
 function getCookie(name) {
@@ -279,11 +521,12 @@ function getCookie(name) {
                 cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
                 break;
             }
-        }
+            }
     }
     return cookieValue;
 }
 
+// Просмотр работы ученика
 // Просмотр работы ученика
 function viewWork(studentId, studentName, submissionId) {
     console.log('Просмотр работы:', studentId, studentName, submissionId);
@@ -306,8 +549,13 @@ function viewWork(studentId, studentName, submissionId) {
     document.getElementById('gradeComment').value = '';
     
     // Загружаем данные через AJAX
-    fetch(`/teacher-portal/homework/{{ homework.id }}/student/${studentId}/`)
-        .then(response => response.json())
+    fetch(`{% url 'teacher_portal:student_submission_detail' homework.id 0 %}`.replace('0', studentId))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('HTTP error ' + response.status);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 // Отображаем текст работы
@@ -325,6 +573,43 @@ function viewWork(studentId, studentName, submissionId) {
                     document.getElementById('fileSection').style.display = 'block';
                     document.getElementById('fileLink').href = data.file_url;
                     document.getElementById('fileName').textContent = data.file_name;
+                    
+                    // Форматируем размер файла
+                    if (data.file_size) {
+                        const size = data.file_size;
+                        let formattedSize = '';
+                        if (size < 1024) {
+                            formattedSize = size + ' Б';
+                        } else if (size < 1024 * 1024) {
+                            formattedSize = (size / 1024).toFixed(1) + ' КБ';
+                        } else {
+                            formattedSize = (size / (1024 * 1024)).toFixed(1) + ' МБ';
+                        }
+                        document.getElementById('fileSize').textContent = formattedSize;
+                    } else {
+                        document.getElementById('fileSize').textContent = '';
+                    }
+                }
+                
+                // Отображаем дату сдачи
+                if (data.submission_date) {
+                    document.getElementById('submissionDate').textContent = data.submission_date;
+                } else {
+                    document.getElementById('submissionDate').textContent = '—';
+                }
+                
+                // Если уже есть оценка, показываем её
+                if (data.has_grade) {
+                    selectedGrade = data.grade_value;
+                    document.getElementById('gradeComment').value = data.grade_comment || '';
+                    
+                    // Подсвечиваем выбранную оценку
+                    document.querySelectorAll('#workModal .grade-btn').forEach(btn => {
+                        if (parseInt(btn.textContent) === data.grade_value) {
+                            btn.classList.add('selected');
+                        }
+                    });
+                    document.getElementById('saveGradeBtn').disabled = false;
                 }
             } else {
                 document.getElementById('modalSubmissionText').textContent = 'Ошибка загрузки данных';
@@ -332,7 +617,7 @@ function viewWork(studentId, studentName, submissionId) {
         })
         .catch(error => {
             console.error('Ошибка:', error);
-            document.getElementById('modalSubmissionText').textContent = 'Ошибка загрузки данных';
+            document.getElementById('modalSubmissionText').textContent = 'Ошибка загрузки данных: ' + error.message;
         });
     
     // Показываем модальное окно
@@ -381,32 +666,38 @@ function gradeStudent(studentId, grade) {
     console.log('Оценка студента:', studentId, grade);
     
     const comment = prompt('Введите комментарий к оценке (необязательно):', '');
-    if (comment === null) return; // Пользователь отменил
+    if (comment === null) return;
     
     // Находим submissionId для этого студента
-    // Для этого найдем кнопку просмотра в той же строке
     const row = document.querySelector(`tr[data-student-id="${studentId}"]`);
     if (!row) {
         alert('Ошибка: не найден ученик');
         return;
     }
     
+    // Ищем submissionId в кнопке просмотра
     const viewBtn = row.querySelector('.btn-outline-primary');
-    if (!viewBtn || !viewBtn.onclick) {
+    if (!viewBtn) {
         alert('Ошибка: нет данных о работе');
         return;
     }
     
-    // Извлекаем submissionId из функции onclick
-    const onclickText = viewBtn.onclick.toString();
-    const match = onclickText.match(/viewWork\('(\d+)', '[^']+', '(\d+)'\)/);
+    // Пытаемся получить submissionId из data-атрибута или из onclick
+    let submissionId = viewBtn.getAttribute('data-submission-id');
     
-    if (!match) {
+    if (!submissionId) {
+        // Пробуем извлечь из onclick
+        const onclickText = viewBtn.getAttribute('onclick') || '';
+        const match = onclickText.match(/viewWork\(['"](\d+)['"], ['"][^'"]+['"], ['"](\d+)['"]\)/);
+        if (match && match.length >= 3) {
+            submissionId = match[2];
+        }
+    }
+    
+    if (!submissionId) {
         alert('Ошибка: не удалось получить данные работы');
         return;
     }
-    
-    const submissionId = match[2];
     
     saveGrade(submissionId, grade, comment, false);
 }
@@ -419,21 +710,26 @@ function saveGrade(submissionId, grade, comment, closeModal = false) {
     formData.append('value', grade);
     formData.append('comment', comment);
     
-    fetch(`/teacher-portal/submissions/${submissionId}/grade/`, {
+    fetch(`{% url 'teacher_portal:grade_submission' 0 %}`.replace('0', submissionId), {
         method: 'POST',
         headers: {
             'X-CSRFToken': getCookie('csrftoken'),
         },
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => { throw new Error(err.error || 'HTTP error ' + response.status); });
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             // Обновляем таблицу
             updateStudentGrade(currentStudentId, grade);
             
             // Показываем уведомление
-            showAlert('success', 'Оценка сохранена');
+            showAlert('success', data.message || 'Оценка сохранена');
             
             // Закрываем модальное окно если нужно
             if (closeModal) {
@@ -446,7 +742,7 @@ function saveGrade(submissionId, grade, comment, closeModal = false) {
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Ошибка сети');
+        alert('Ошибка: ' + error.message);
     });
 }
 
@@ -491,6 +787,18 @@ function showAlert(type, message) {
 // Инициализация при загрузке
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Страница загружена, кнопки готовы к работе');
+    
+    // Добавляем data-атрибут к кнопкам просмотра для надежности
+    document.querySelectorAll('.btn-outline-primary').forEach(btn => {
+        const onclick = btn.getAttribute('onclick');
+        if (onclick) {
+            const match = onclick.match(/viewWork\(['"](\d+)['"], ['"][^'"]+['"], ['"](\d+)['"]\)/);
+            if (match && match.length >= 3) {
+                btn.setAttribute('data-student-id', match[1]);
+                btn.setAttribute('data-submission-id', match[2]);
+            }
+        }
+    });
 });
 </script>
 {% endblock %}

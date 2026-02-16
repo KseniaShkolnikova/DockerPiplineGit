@@ -8,6 +8,11 @@ from django.utils import timezone
 from datetime import datetime, date, timedelta
 import json
 import calendar
+from django.http import HttpResponse
+from django.utils import timezone
+from django.db.models import Avg, Count, Q
+from api.models import StudentGroup, StudentProfile, Grade, Subject
+
 
 # Импортируем ВСЕ существующие модели из api
 from api.models import *
@@ -56,7 +61,27 @@ def group_grades_overview(request):
     context = {
         'groups_stats': groups_stats,
     }
+    # Итоги (правильные, без шаблонных костылей)
+    total_students = sum(s['student_count'] for s in groups_stats)
+    total_grades = sum(s['grades_count'] for s in groups_stats)
+
+    # Сколько групп без куратора
+    groups_without_curator = sum(1 for s in groups_stats if not s['group'].curator)
+
+    # Средний балл по всем оценкам (не среднее из средних!)
+    overall_avg_result = Grade.objects.aggregate(avg=Avg('value'))
+    overall_avg = round(overall_avg_result['avg'], 1) if overall_avg_result['avg'] else 0
+
+    context = {
+        'groups_stats': groups_stats,
+        'total_students': total_students,
+        'total_grades': total_grades,
+        'groups_without_curator': groups_without_curator,
+        'overall_avg': overall_avg,
+    }
     return render(request, 'education_department/group_grades_overview.html', context)
+
+    
 
 
 @login_required
@@ -877,3 +902,300 @@ def schedule_management(request):
     """Управление расписанием (ЗАГЛУШКА - используем существующее приложение schedule)"""
     messages.info(request, 'Управление расписанием находится в отдельном приложении')
     return redirect('schedule:dashboard')
+
+from django.db.models import Count, Avg, Q
+from django.utils import timezone
+from datetime import timedelta
+
+@login_required
+@education_department_required
+def homework_stats(request):
+    """
+    Статистика домашних заданий (только просмотр).
+    Фильтры: период, группа, предмет, статус сдачи.
+    """
+    # --- фильтры ---
+    period = request.GET.get("period", "30")  # 7 / 30 / 90 / all
+    group_id = request.GET.get("group", "")
+    subject_id = request.GET.get("subject", "")
+    status = request.GET.get("status", "")   # submitted / not_submitted / any
+
+    # период
+    now = timezone.now()
+    if period in ("7", "30", "90"):
+        date_from = now - timedelta(days=int(period))
+    else:
+        date_from = None
+
+    # базовый queryset ДЗ
+    homeworks_qs = Homework.objects.select_related(
+        "student_group", "schedule_lesson__subject"
+    ).all().order_by("-created_at")
+
+    if date_from:
+        homeworks_qs = homeworks_qs.filter(created_at__gte=date_from)
+
+    if group_id:
+        homeworks_qs = homeworks_qs.filter(student_group_id=group_id)
+
+    if subject_id:
+        homeworks_qs = homeworks_qs.filter(schedule_lesson__subject_id=subject_id)
+
+    # статус сдачи (на уровне ДЗ)
+    # submitted = есть хотя бы 1 submission
+    # not_submitted = нет ни одной submission
+    if status == "submitted":
+        homeworks_qs = homeworks_qs.annotate(submissions_cnt=Count("submissions")).filter(submissions_cnt__gt=0)
+    elif status == "not_submitted":
+        homeworks_qs = homeworks_qs.annotate(submissions_cnt=Count("submissions")).filter(submissions_cnt=0)
+
+    # --- агрегаты для карточек ---
+    # кол-во ДЗ
+    total_homeworks = homeworks_qs.count()
+
+    # кол-во сдач по выбранным ДЗ
+    submissions_total = HomeworkSubmission.objects.filter(
+        homework__in=homeworks_qs
+    ).count()
+
+    # уникальных учеников, которые сдавали
+    students_submitted = User.objects.filter(
+        homework_submissions__homework__in=homeworks_qs
+    ).distinct().count()
+
+    # среднее кол-во сдач на 1 ДЗ (грубо)
+    avg_submissions_per_hw = round(submissions_total / total_homeworks, 2) if total_homeworks else 0
+
+    # --- таблица последних ДЗ (без тяжёлых join’ов) ---
+    latest_homeworks = homeworks_qs[:25]
+
+    # справочники для фильтров
+    groups = StudentGroup.objects.all().order_by("year", "name")
+    subjects = Subject.objects.all().order_by("name")
+
+    context = {
+        "filters": {
+            "period": period,
+            "group": group_id,
+            "subject": subject_id,
+            "status": status,
+        },
+        "groups": groups,
+        "subjects": subjects,
+        "total_homeworks": total_homeworks,
+        "submissions_total": submissions_total,
+        "students_submitted": students_submitted,
+        "avg_submissions_per_hw": avg_submissions_per_hw,
+        "latest_homeworks": latest_homeworks,
+    }
+    return render(request, "education_department/homework_stats.html", context)
+
+
+
+
+
+from io import BytesIO
+import os
+
+from django.conf import settings
+from django.http import HttpResponse
+from django.utils import timezone
+from django.db.models import Avg, Count
+
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.units import mm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics
+
+
+def _safe_float(v, default=0.0):
+    try:
+        return float(v)
+    except Exception:
+        return default
+
+
+@login_required
+@education_department_required
+def grades_school_report_pdf(request):
+    """
+    PDF отчёт по общей статистике оценок по школе (без CRUD).
+    """
+
+    # ====== агрегаты "по школе" ======
+    total_groups = StudentGroup.objects.count()
+    total_students = StudentProfile.objects.count()
+    total_grades = Grade.objects.count()
+
+    overall_avg_val = Grade.objects.aggregate(avg=Avg("value"))["avg"]
+    overall_avg = round(_safe_float(overall_avg_val, 0.0), 2) if overall_avg_val else 0
+
+    groups_without_curator = StudentGroup.objects.filter(curator__isnull=True).count()
+
+    # распределение оценок (пример по целым: 5,4,3,2)
+    dist = {v: Grade.objects.filter(value=v).count() for v in [5, 4, 3, 2]}
+
+    # топ-5 предметов по количеству оценок (надёжно через Grade)
+    top_subjects = (
+        Grade.objects
+        .values("subject__name")
+        .annotate(grades_cnt=Count("id"))
+        .order_by("-grades_cnt", "subject__name")[:5]
+    )
+
+    # топ-5 групп по среднему баллу (где есть оценки)
+    groups_avg = (
+        StudentGroup.objects
+        .annotate(
+            grades_cnt=Count("students__user__grades", distinct=True),
+            avg_grade=Avg("students__user__grades__value"),
+            student_cnt=Count("students", distinct=True),
+        )
+        .filter(grades_cnt__gt=0)
+        .order_by("-avg_grade")[:5]
+    )
+
+    # ====== PDF ======
+    buffer = BytesIO()
+
+    # шрифт из проекта
+    font_path = os.path.join(settings.BASE_DIR, "static", "fonts", "ARIAL.TTF")
+
+    try:
+        pdfmetrics.registerFont(TTFont("Arial", font_path))
+        base_font = "Arial"
+    except Exception:
+        base_font = "Helvetica"  # если шрифт не найден, кириллица может сломаться
+
+    styles = getSampleStyleSheet()
+    normal = styles["Normal"]
+    title = styles["Title"]
+    h2 = styles["Heading2"]
+    h3 = styles["Heading3"]
+
+    for st in (normal, title, h2, h3):
+        st.fontName = base_font
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=18 * mm,
+        rightMargin=18 * mm,
+        topMargin=15 * mm,
+        bottomMargin=15 * mm,
+        title="Отчёт по оценкам",
+    )
+
+    story = []
+
+    report_date = timezone.localtime(timezone.now()).strftime("%d.%m.%Y %H:%M")
+
+    story.append(Paragraph("ОТЧЁТ", title))
+    story.append(Paragraph("Общая статистика оценок по школе", h2))
+    story.append(Spacer(1, 6))
+    story.append(Paragraph(f"Дата формирования: {report_date}", normal))
+    story.append(Spacer(1, 12))
+
+    # 1) Общая сводка
+    summary_data = [
+        ["Показатель", "Значение"],
+        ["Всего групп", str(total_groups)],
+        ["Всего учеников", str(total_students)],
+        ["Всего оценок", str(total_grades)],
+        ["Средний балл (по школе)", (f"{overall_avg:.2f}" if overall_avg else "—")],
+        ["Групп без куратора", str(groups_without_curator)],
+    ]
+    summary_table = Table(summary_data, colWidths=[110 * mm, 60 * mm])
+    summary_table.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, -1), base_font),
+        ("FONTSIZE", (0, 0), (-1, -1), 10),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f2f4f7")),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#d0d5dd")),
+        ("ALIGN", (1, 1), (1, -1), "RIGHT"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("PADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(Paragraph("1) Общая сводка", h3))
+    story.append(summary_table)
+    story.append(Spacer(1, 12))
+
+    # 2) Распределение оценок
+    dist_data = [
+        ["Оценка", "Количество"],
+        ["5", str(dist[5])],
+        ["4", str(dist[4])],
+        ["3", str(dist[3])],
+        ["2", str(dist[2])],
+    ]
+    dist_table = Table(dist_data, colWidths=[50 * mm, 120 * mm])
+    dist_table.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, -1), base_font),
+        ("FONTSIZE", (0, 0), (-1, -1), 10),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f2f4f7")),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#d0d5dd")),
+        ("ALIGN", (1, 1), (1, -1), "RIGHT"),
+        ("PADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(Paragraph("2) Распределение оценок", h3))
+    story.append(dist_table)
+    story.append(Spacer(1, 12))
+
+    # 3) Топ предметов
+    subj_data = [["Предмет", "Оценок"]]
+    for s in top_subjects:
+        subj_data.append([s["subject__name"] or "—", str(s["grades_cnt"] or 0)])
+
+    subj_table = Table(subj_data, colWidths=[130 * mm, 40 * mm])
+    subj_table.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, -1), base_font),
+        ("FONTSIZE", (0, 0), (-1, -1), 10),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f2f4f7")),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#d0d5dd")),
+        ("ALIGN", (1, 1), (1, -1), "RIGHT"),
+        ("PADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(Paragraph("3) Топ-5 предметов по количеству оценок", h3))
+    story.append(subj_table)
+    story.append(Spacer(1, 12))
+
+    # 4) Топ групп
+    grp_data = [["Группа", "Учеников", "Оценок", "Средний балл"]]
+    for g in groups_avg:
+        grp_data.append([
+            f"{g.name} ({g.year} год)",
+            str(g.student_cnt or 0),
+            str(g.grades_cnt or 0),
+            f"{_safe_float(g.avg_grade, 0.0):.2f}" if g.avg_grade else "—",
+        ])
+
+    grp_table = Table(grp_data, colWidths=[85 * mm, 30 * mm, 25 * mm, 30 * mm])
+    grp_table.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, -1), base_font),
+        ("FONTSIZE", (0, 0), (-1, -1), 10),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f2f4f7")),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#d0d5dd")),
+        ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+        ("ALIGN", (0, 0), (0, -1), "LEFT"),
+        ("PADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(Paragraph("4) Топ-5 групп по среднему баллу (где есть оценки)", h3))
+    story.append(grp_table)
+    story.append(Spacer(1, 18))
+
+    story.append(Paragraph("Подпись ответственного: ____________________", normal))
+    story.append(Spacer(1, 6))
+    story.append(Paragraph("М.П.", normal))
+
+    doc.build(story)
+
+    pdf = buffer.getvalue()
+    buffer.close()
+
+    filename = f"school_grades_report_{timezone.localtime(timezone.now()).strftime('%Y%m%d_%H%M')}.pdf"
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response.write(pdf)
+    return response

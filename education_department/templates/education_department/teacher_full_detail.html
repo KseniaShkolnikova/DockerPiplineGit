@@ -4,18 +4,18 @@
 
 {% block content %}
 <div class="admin-container">
-    {% if request.user.groups.all.0.name == 'education_department' or request.path|slice:":10" == '/education/' %}
+    {# Сайдбар по контексту #}
+    {% if request.resolver_match.app_name == 'education_department' %}
         {% include "education_department/includes/education_sidebar.html" %}
     {% elif request.user.is_superuser or request.user.groups.all.0.name == 'admin' %}
-        <!-- Если админ или суперпользователь, используем стандартный сайдбар -->
         {% include "includes/sidebar.html" %}
-    {% endif %}    
+    {% endif %}
+
     <main class="main-content">
         <!-- Хлебные крошки -->
         <nav aria-label="breadcrumb" class="mb-4">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item">
-                    <!-- Используем request.resolver_match для определения контекста -->
                     {% if request.resolver_match.app_name == 'education_department' %}
                         <a href="{% url 'education_department:teachers_overview' %}">Обзор учителей</a>
                     {% else %}
@@ -27,28 +27,30 @@
         </nav>
 
         <!-- Заголовок -->
-        <div class="content-header mb-4">
+        <div class="content-header mb-4 d-flex justify-content-between align-items-start flex-wrap gap-2">
             <div class="header-left">
-                <h1 class="content-title">{{ teacher_user.get_full_name }}</h1>
-                <p class="content-subtitle">
-                    {% if profile.qualification %}{{ profile.qualification }} • {% endif %}
+                <h1 class="content-title mb-1">{{ teacher_user.get_full_name }}</h1>
+                <p class="content-subtitle mb-0">
+                    {% if profile.qualification %}{{ profile.qualification }}{% endif %}
+                    {% if profile.qualification and teacher_user.email %} • {% endif %}
                     {% if teacher_user.email %}{{ teacher_user.email }}{% endif %}
                 </p>
             </div>
+
             <div class="header-right">
                 <div class="btn-group">
-                    <!-- Определяем URL возврата -->
                     {% if request.resolver_match.app_name == 'education_department' %}
                         <a href="{% url 'education_department:teachers_overview' %}" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-left"></i> Назад
-                        </a>
-                        <a href="#" class="btn btn-outline-primary">
-                            <i class="bi bi-pencil"></i> Редактировать
                         </a>
                     {% else %}
                         <a href="{% url 'teachers_overview' %}" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-left"></i> Назад
                         </a>
+                    {% endif %}
+
+                    {# Редактирование доступно только админу/суперпользователю #}
+                    {% if request.user.is_superuser or request.user.groups.all.0.name == 'admin' %}
                         <a href="{% url 'teacher_edit' teacher_user.id %}" class="btn btn-outline-primary">
                             <i class="bi bi-pencil"></i> Редактировать
                         </a>
@@ -66,16 +68,16 @@
                             <div class="user-avatar large mx-auto mb-3">
                                 {{ teacher_user.username|first|upper }}
                             </div>
-                            <h5>{{ teacher_user.get_full_name }}</h5>
-                            <p class="text-muted">{{ teacher_user.username }}</p>
+                            <h5 class="mb-1">{{ teacher_user.get_full_name }}</h5>
+                            <p class="text-muted mb-2">{{ teacher_user.username }}</p>
                             {% if teacher_user.is_active %}
-                            <span class="badge bg-success">Активен</span>
+                                <span class="badge bg-success">Активен</span>
                             {% else %}
-                            <span class="badge bg-danger">Неактивен</span>
+                                <span class="badge bg-danger">Неактивен</span>
                             {% endif %}
                         </div>
-                        
-                        <table class="table table-sm table-borderless">
+
+                        <table class="table table-sm table-borderless mb-0">
                             {% if profile %}
                             <tr>
                                 <td><strong>Отчество:</strong></td>
@@ -89,7 +91,7 @@
                                 <td><strong>Дата рождения:</strong></td>
                                 <td>
                                     {% if profile.birth_date %}
-                                    {{ profile.birth_date|date:"d.m.Y" }}
+                                        {{ profile.birth_date|date:"d.m.Y" }}
                                     {% else %}-{% endif %}
                                 </td>
                             </tr>
@@ -110,7 +112,7 @@
                                 <td><strong>Последний вход:</strong></td>
                                 <td>
                                     {% if teacher_user.last_login %}
-                                    {{ teacher_user.last_login|date:"d.m.Y H:i" }}
+                                        {{ teacher_user.last_login|date:"d.m.Y H:i" }}
                                     {% else %}-{% endif %}
                                 </td>
                             </tr>
@@ -131,10 +133,10 @@
                         <div class="stat-value">{{ total_grades }}</div>
                         <div class="stat-label">Оценок выставлено</div>
                     </div>
-                    
+
                     <div class="stat-card">
                         <div class="stat-header">
-                            <div class="stat-icon 
+                            <div class="stat-icon
                                 {% if avg_grade >= 4.5 %}success
                                 {% elif avg_grade >= 3.5 %}warning
                                 {% elif avg_grade > 0 %}danger
@@ -145,7 +147,7 @@
                         <div class="stat-value">{{ avg_grade }}</div>
                         <div class="stat-label">Средний балл</div>
                     </div>
-                    
+
                     <div class="stat-card">
                         <div class="stat-header">
                             <div class="stat-icon success">
@@ -155,7 +157,7 @@
                         <div class="stat-value">{{ students_taught }}</div>
                         <div class="stat-label">Учеников</div>
                     </div>
-                    
+
                     <div class="stat-card">
                         <div class="stat-header">
                             <div class="stat-icon warning">
@@ -181,7 +183,7 @@
                                         <h4 class="text-primary">{{ stat.count }}</h4>
                                         <p class="text-muted mb-1">{{ stat.name }}</p>
                                         <div>
-                                            <span class="badge 
+                                            <span class="badge
                                                 {% if stat.avg >= 4.5 %}bg-success
                                                 {% elif stat.avg >= 3.5 %}bg-warning text-dark
                                                 {% else %}bg-danger{% endif %}">
@@ -221,23 +223,23 @@
                                     <div>
                                         <h5 class="card-title mb-1">{{ stat.subject.name }}</h5>
                                         {% if stat.subject.description %}
-                                        <p class="text-muted small mb-0">{{ stat.subject.description|truncatechars:100 }}</p>
+                                            <p class="text-muted small mb-0">{{ stat.subject.description|truncatechars:100 }}</p>
                                         {% endif %}
                                     </div>
-                                    <!-- Используем правильный URL в зависимости от контекста -->
+
                                     {% if request.resolver_match.app_name == 'education_department' %}
-                                        <a href="{% url 'education_department:teacher_subject_performance' teacher_user.id stat.subject.id %}" 
+                                        <a href="{% url 'education_department:teacher_subject_performance' teacher_user.id stat.subject.id %}"
                                            class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-graph-up"></i>
                                         </a>
                                     {% else %}
-                                        <a href="{% url 'teacher_subject_performance' teacher_user.id stat.subject.id %}" 
+                                        <a href="{% url 'teacher_subject_performance' teacher_user.id stat.subject.id %}"
                                            class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-graph-up"></i>
                                         </a>
                                     {% endif %}
                                 </div>
-                                
+
                                 <div class="stats-row mb-3">
                                     <div class="stat-item">
                                         <div class="stat-value">{{ stat.total }}</div>
@@ -254,12 +256,12 @@
                                     </div>
                                     {% endif %}
                                 </div>
-                                
+
                                 {% if stat.grade_distribution %}
                                 <div class="grade-distribution">
                                     <small class="text-muted d-block mb-2">Распределение оценок:</small>
                                     {% for value, data in stat.grade_distribution.items %}
-                                    <span class="badge 
+                                    <span class="badge
                                         {% if value == 5 %}bg-success
                                         {% elif value == 4 %}bg-info
                                         {% elif value == 3 %}bg-warning text-dark
@@ -294,47 +296,45 @@
                     </div>
                     <div class="card-body">
                         {% if schedule_by_day %}
-                        <div class="schedule-tabs">
-                            {% for day_code, day_data in schedule_by_day.items %}
-                            <div class="schedule-day mb-4">
-                                <h6 class="mb-3">{{ day_data.day_name }}</h6>
-                                <div class="list-group">
-                                    {% for lesson in day_data.lessons %}
-                                    <div class="list-group-item">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <strong>{{ lesson.lesson_number }} урок</strong>
-                                                <div class="text-muted small">
-                                                    {{ lesson.subject.name }} • 
-                                                    {{ lesson.daily_schedule.student_group.name }}
+                            <div class="schedule-tabs">
+                                {% for day_code, day_data in schedule_by_day.items %}
+                                <div class="schedule-day mb-4">
+                                    <h6 class="mb-3">{{ day_data.day_name }}</h6>
+                                    <div class="list-group">
+                                        {% for lesson in day_data.lessons %}
+                                        <div class="list-group-item">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <strong>{{ lesson.lesson_number }} урок</strong>
+                                                    <div class="text-muted small">
+                                                        {{ lesson.subject.name }} • {{ lesson.daily_schedule.student_group.name }}
+                                                    </div>
+                                                </div>
+                                                <div class="text-end">
+                                                    {% if request.resolver_match.app_name == 'education_department' %}
+                                                        <a href="{% url 'education_department:group_grades_detail' lesson.daily_schedule.student_group.id %}"
+                                                           class="badge bg-light text-dark text-decoration-none">
+                                                            {{ lesson.daily_schedule.student_group.year }} год
+                                                        </a>
+                                                    {% else %}
+                                                        <a href="{% url 'group_grades_detail' lesson.daily_schedule.student_group.id %}"
+                                                           class="badge bg-light text-dark text-decoration-none">
+                                                            {{ lesson.daily_schedule.student_group.year }} год
+                                                        </a>
+                                                    {% endif %}
                                                 </div>
                                             </div>
-                                            <div class="text-end">
-                                                <!-- Ссылка на группы в зависимости от контекста -->
-                                                {% if request.resolver_match.app_name == 'education_department' %}
-                                                    <a href="{% url 'education_department:group_grades_detail' lesson.daily_schedule.student_group.id %}" 
-                                                       class="badge bg-light text-dark text-decoration-none">
-                                                        {{ lesson.daily_schedule.student_group.year }} год
-                                                    </a>
-                                                {% else %}
-                                                    <a href="{% url 'group_grades_detail' lesson.daily_schedule.student_group.id %}" 
-                                                       class="badge bg-light text-dark text-decoration-none">
-                                                        {{ lesson.daily_schedule.student_group.year }} год
-                                                    </a>
-                                                {% endif %}
-                                            </div>
                                         </div>
+                                        {% endfor %}
                                     </div>
-                                    {% endfor %}
                                 </div>
+                                {% endfor %}
                             </div>
-                            {% endfor %}
-                        </div>
                         {% else %}
-                        <div class="text-center py-4">
-                            <i class="bi bi-calendar-x" style="font-size: 2rem; color: #dee2e6;"></i>
-                            <p class="text-muted mt-2">Расписание не настроено</p>
-                        </div>
+                            <div class="text-center py-4">
+                                <i class="bi bi-calendar-x" style="font-size: 2rem; color: #dee2e6;"></i>
+                                <p class="text-muted mt-2">Расписание не настроено</p>
+                            </div>
                         {% endif %}
                     </div>
                 </div>
@@ -356,14 +356,14 @@
                                         <strong>{{ group.name }}</strong>
                                         <div class="text-muted small">{{ group.year }} год обучения</div>
                                     </div>
-                                    <!-- Ссылка на просмотр группы в зависимости от контекста -->
+
                                     {% if request.resolver_match.app_name == 'education_department' %}
-                                        <a href="{% url 'education_department:group_grades_detail' group.id %}" 
+                                        <a href="{% url 'education_department:group_grades_detail' group.id %}"
                                            class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-eye"></i>
                                         </a>
                                     {% else %}
-                                        <a href="{% url 'group_grades_detail' group.id %}" 
+                                        <a href="{% url 'group_grades_detail' group.id %}"
                                            class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-eye"></i>
                                         </a>
@@ -414,7 +414,7 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <span class="badge 
+                                    <span class="badge
                                         {% if grade.value >= 4.5 %}bg-success
                                         {% elif grade.value >= 3.5 %}bg-warning text-dark
                                         {% else %}bg-danger{% endif %}">
@@ -423,7 +423,7 @@
                                 </td>
                                 <td>
                                     {% if grade.comment %}
-                                    <small>{{ grade.comment|truncatechars:30 }}</small>
+                                        <small>{{ grade.comment|truncatechars:30 }}</small>
                                     {% else %}-{% endif %}
                                 </td>
                             </tr>
@@ -443,11 +443,13 @@
     height: 80px;
     font-size: 32px;
 }
+
 .stat-icon.primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
 .stat-icon.success { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); }
 .stat-icon.warning { background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); }
 .stat-icon.danger { background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%); }
 .stat-icon.secondary { background: linear-gradient(135deg, #a0aec0 0%, #718096 100%); }
+
 .stats-row {
     display: flex;
     gap: 1rem;
@@ -463,6 +465,7 @@
     font-size: 0.75rem;
     color: #6c757d;
 }
+
 .schedule-day {
     border-bottom: 1px solid #dee2e6;
     padding-bottom: 1rem;
@@ -470,23 +473,28 @@
 .schedule-day:last-child {
     border-bottom: none;
 }
+
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
 }
+
 .stat-card {
     background: white;
     border-radius: 8px;
     padding: 1.25rem;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid rgba(0,0,0,0.06);
 }
+
 .stat-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0.75rem;
 }
+
 .stat-icon {
     width: 40px;
     height: 40px;
@@ -496,6 +504,7 @@
     justify-content: center;
     color: white;
 }
+
 .stat-value {
     font-size: 1.75rem;
     font-weight: 700;
@@ -506,10 +515,19 @@
     font-size: 0.875rem;
     color: #718096;
 }
+
 .grade-distribution {
     display: flex;
     flex-wrap: wrap;
     gap: 0.25rem;
+}
+
+/* Небольшие улучшения карточек, без глобальной ломки */
+.card {
+    border: 1px solid rgba(0,0,0,0.06);
+}
+.card-header {
+    background: transparent;
 }
 </style>
 {% endblock %}

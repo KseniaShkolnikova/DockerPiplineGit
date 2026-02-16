@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -47,6 +48,7 @@ INSTALLED_APPS = [
     'attendance_student',
     'teacher_portal',
     'education_department',
+    'backup_service',
 ]
 
 
@@ -159,3 +161,7 @@ EMAIL_HOST_USER = 'skolnikovaksenia64@gmail.com'  # Ваш реальный emai
 EMAIL_HOST_PASSWORD = 'bfdq hnzl vfke jsgb'  # Пароль приложения (используйте mpted или MPTed)
 DEFAULT_FROM_EMAIL = 'skolnikovaksenia64@gmail.com'
 SERVER_EMAIL = 'skolnikovaksenia64@gmail.com'
+
+# Настройки для бэкапов
+BACKUP_DIR = os.path.join(BASE_DIR, 'backups')
+os.makedirs(BACKUP_DIR, exist_ok=True)

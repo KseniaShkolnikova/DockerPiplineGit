@@ -9,19 +9,45 @@
     
     <main class="main-content">
         <div class="content-header">
-            <div class="header-left">
-                <h1 class="content-title">Управление учениками</h1>
-                <p class="content-subtitle">Просмотр, добавление и управление учениками</p>
-            </div>
-            <div class="header-actions">
-                <a href="{% url 'students_list' %}" class="btn btn-primary">
-                    <i class="bi bi-list"></i> Все ученики
-                </a>
-                <a href="{% url 'student_create' %}" class="btn btn-success">
-                    <i class="bi bi-plus-circle"></i> Добавить ученика
-                </a>
-            </div>
+    <div class="header-left">
+        <h1 class="content-title">Управление учениками</h1>
+        <p class="content-subtitle">Просмотр, добавление и управление учениками</p>
+    </div>
+    <div class="header-actions">
+        <a href="{% url 'students_list' %}" class="btn btn-primary">
+            <i class="bi bi-list"></i> Все ученики
+        </a>
+        <a href="{% url 'student_create' %}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Добавить ученика
+        </a>
+        
+        <!-- Кнопки для Excel (импорт/экспорт) -->
+        <div class="btn-group" style="margin-left: 8px;">
+            <button type="button" class="btn btn-info dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-file-earmark-excel"></i> Excel
+            </button>
+            <ul class="dropdown-menu">
+                <li>
+                    <a class="dropdown-item" href="{% url 'export_students_excel' %}?{{ request.GET.urlencode }}" target="_blank">
+                        <i class="bi bi-download"></i> Экспорт из Excel
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item" href="{% url 'export_students_template' %}" target="_blank">
+                        <i class="bi bi-file-earmark"></i> Скачать шаблон для импорта
+                    </a>
+                </li>
+                
+                <li>
+                    <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#importModal">
+                        <i class="bi bi-upload"></i> Импорт в систему
+                    </a>
+                </li>
+            </ul>
         </div>
+    </div>
+</div>
 
         <!-- Фильтры и поиск -->
         <div class="filter-card">
@@ -70,7 +96,65 @@
                     {% endif %}
                 </div>
             </form>
+       <p></p>
+
+
+<!-- Модальное окно для импорта -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importModalLabel">
+                    <i class="bi bi-file-earmark-excel"></i> Импорт учеников из Excel
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'import_students_excel' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        <strong>Инструкция:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Используйте шаблон для правильного формата</li>
+                            <li>Обязательные поля: Фамилия, Имя, Отчество, Логин, Email, Пароль, Курс</li>
+                            <li>Логин и Email должны быть уникальными</li>
+                            <li>Класс должен существовать в системе</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="excelFile" class="form-label">Выберите файл Excel (.xlsx или .xls)</label>
+                        <input class="form-control" type="file" name="excel_file" id="excelFile" accept=".xlsx,.xls" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="updateExisting" name="update_existing" checked>
+                            <label class="form-check-label" for="updateExisting">
+                                Обновлять существующих учеников (по логину)
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <a href="{% url 'export_students_template' %}" class="btn btn-sm btn-outline-primary" target="_blank">
+                            <i class="bi bi-download"></i> Скачать шаблон
+                        </a>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-upload"></i> Импортировать
+                    </button>
+                </div>
+            </form>
         </div>
+    </div>
+</div>
+ </div>
+
 
         <!-- Статистика -->
         <div class="stats-grid">

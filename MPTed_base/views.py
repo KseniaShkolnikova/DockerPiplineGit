@@ -17,7 +17,6 @@ from api.models import *
 def login_page(request):
     """HTML страница авторизации"""
     if request.user.is_authenticated:
-        # Если уже авторизован, перенаправляем в зависимости от роли
         if request.user.is_superuser or request.user.groups.filter(name='admin').exists():
             return redirect('admin_dashboard_page')
         return redirect('dashboard_page')  
@@ -2507,4 +2506,714 @@ def view_submission_file(request, submission_id):
         messages.error(request, f'Ошибка при открытии файла: {str(e)}')
         return redirect('student_homework_detail', homework_id=submission.homework_id)
 
+# Добавьте в начало файла
+import openpyxl
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
+from django.http import HttpResponse
+from io import BytesIO
+import tempfile
+import os
+from datetime import datetime
 
+# ===== ИМПОРТ И ЭКСПОРТ УЧЕНИКОВ В EXCEL =====
+
+@custom_login_required
+@admin_required
+def export_students_excel(request):
+    """Экспорт учеников в Excel с учетом текущих фильтров"""
+    
+    # Получаем те же фильтры, что и в students_list
+    search_query = request.GET.get('search', '').strip()
+    group_filter = request.GET.get('group', '')
+    course_filter = request.GET.get('course', '')
+    status_filter = request.GET.get('status', '')
+    
+    # Базовый запрос с теми же фильтрами
+    students_qs = StudentProfile.objects.select_related(
+        'user', 'student_group'
+    ).order_by('user__last_name', 'user__first_name')
+    
+    # Применяем фильтры (как в students_list)
+    if search_query:
+        students_qs = students_qs.filter(
+            Q(user__first_name__icontains=search_query) |
+            Q(user__last_name__icontains=search_query) |
+            Q(patronymic__icontains=search_query) |
+            Q(user__username__icontains=search_query) |
+            Q(user__email__icontains=search_query) |
+            Q(phone__icontains=search_query)
+        )
+    
+    if group_filter:
+        if group_filter == 'no_group':
+            students_qs = students_qs.filter(student_group__isnull=True)
+        else:
+            students_qs = students_qs.filter(student_group_id=group_filter)
+    
+    if course_filter and course_filter.isdigit():
+        students_qs = students_qs.filter(course=int(course_filter))
+    
+    if status_filter == 'active':
+        students_qs = students_qs.filter(user__is_active=True)
+    elif status_filter == 'inactive':
+        students_qs = students_qs.filter(user__is_active=False)
+    
+    # Создаем Excel файл
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Ученики"
+    
+    # Заголовки
+    headers = [
+        '№', 'Фамилия', 'Имя', 'Отчество', 'Логин', 'Email',
+        'Телефон', 'Курс', 'Класс', 'Дата рождения', 'Адрес',
+        'Статус', 'Дата регистрации', 'Последний вход'
+    ]
+    
+    # Стили для заголовков
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    
+    # Применяем стили к заголовкам
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num)
+        cell.value = header
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+    
+    # Заполняем данными
+    for row_num, student in enumerate(students_qs, 2):
+        # Основные данные
+        ws.cell(row=row_num, column=1).value = row_num - 1  # №
+        ws.cell(row=row_num, column=2).value = student.user.last_name  # Фамилия
+        ws.cell(row=row_num, column=3).value = student.user.first_name  # Имя
+        ws.cell(row=row_num, column=4).value = student.patronymic or ''  # Отчество
+        ws.cell(row=row_num, column=5).value = student.user.username  # Логин
+        ws.cell(row=row_num, column=6).value = student.user.email or ''  # Email
+        ws.cell(row=row_num, column=7).value = student.phone or ''  # Телефон
+        ws.cell(row=row_num, column=8).value = student.course  # Курс
+        ws.cell(row=row_num, column=9).value = student.student_group.name if student.student_group else 'Без класса'  # Класс
+        ws.cell(row=row_num, column=10).value = student.birth_date.strftime('%d.%m.%Y') if student.birth_date else ''  # Дата рождения
+        ws.cell(row=row_num, column=11).value = student.address or ''  # Адрес
+        ws.cell(row=row_num, column=12).value = 'Активен' if student.user.is_active else 'Заблокирован'  # Статус
+        ws.cell(row=row_num, column=13).value = student.user.date_joined.strftime('%d.%m.%Y %H:%M')  # Дата регистрации
+        ws.cell(row=row_num, column=14).value = student.user.last_login.strftime('%d.%m.%Y %H:%M') if student.user.last_login else 'Никогда'  # Последний вход
+        
+        # Выравнивание
+        for col_num in range(1, 15):
+            ws.cell(row=row_num, column=col_num).alignment = Alignment(horizontal="left", vertical="center")
+    
+    # Автоподбор ширины колонок
+    for col_num, header in enumerate(headers, 1):
+        column_letter = get_column_letter(col_num)
+        
+        # Получаем максимальную длину в колонке
+        max_length = len(header)
+        for row_num in range(2, len(students_qs) + 2):
+            cell_value = ws.cell(row=row_num, column=col_num).value
+            if cell_value:
+                max_length = max(max_length, len(str(cell_value)))
+        
+        # Устанавливаем ширину с запасом
+        adjusted_width = min(max_length + 2, 50)
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    # Добавляем строку с итогами
+    total_row = len(students_qs) + 3
+    ws.cell(row=total_row, column=1).value = f"Всего учеников: {len(students_qs)}"
+    ws.cell(row=total_row, column=1).font = Font(bold=True)
+    
+    # Создаем HttpResponse с Excel файлом
+    filename = f"ucheniki_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    # Сохраняем в response
+    wb.save(response)
+    
+    return response
+
+
+@custom_login_required
+@admin_required
+def export_students_template(request):
+    """Скачивание шаблона для импорта учеников"""
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Шаблон для импорта"
+    
+    # Заголовки для импорта
+    headers = [
+        'Фамилия*', 'Имя*', 'Отчество*', 'Логин*', 'Email*', 
+        'Пароль*', 'Телефон', 'Курс*', 'Класс', 'Дата рождения (ДД.ММ.ГГГГ)',
+        'Адрес', 'Активен (да/нет)'
+    ]
+    
+    # Стили для заголовков
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    
+    # Стиль для обязательных полей (красная звездочка)
+    required_font = Font(bold=True, color="FF0000")
+    
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num)
+        cell.value = header
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+    
+    # Добавляем пояснения
+    ws.cell(row=2, column=1).value = "Иванов"
+    ws.cell(row=2, column=2).value = "Иван"
+    ws.cell(row=2, column=3).value = "Иванович"
+    ws.cell(row=2, column=4).value = "ivanov_2024"
+    ws.cell(row=2, column=5).value = "ivanov@example.com"
+    ws.cell(row=2, column=6).value = "password123"
+    ws.cell(row=2, column=7).value = "+7 (999) 123-45-67"
+    ws.cell(row=2, column=8).value = "1"
+    ws.cell(row=2, column=9).value = "10А"
+    ws.cell(row=2, column=10).value = "15.05.2008"
+    ws.cell(row=2, column=11).value = "ул. Пушкина, д. 10"
+    ws.cell(row=2, column=12).value = "да"
+    
+    # Выравнивание для примера
+    for col_num in range(1, 13):
+        ws.cell(row=2, column=col_num).alignment = Alignment(horizontal="left", vertical="center")
+    
+    # Добавляем лист с инструкцией
+    ws_instruction = wb.create_sheet("Инструкция")
+    
+    instruction_data = [
+        ["ИНСТРУКЦИЯ ПО ИМПОРТУ УЧЕНИКОВ"],
+        [""],
+        ["1. Поля, отмеченные звездочкой (*), обязательны для заполнения"],
+        ["2. Логин должен быть уникальным для каждого ученика"],
+        ["3. Email должен быть уникальным и корректным"],
+        ["4. Пароль должен быть не менее 6 символов"],
+        ["5. Курс указывается числом (1, 2, 3 или 4)"],
+        ["6. Класс должен существовать в системе (название класса должно точно совпадать)"],
+        ["7. Дата рождения в формате: ДД.ММ.ГГГГ (например, 15.05.2008)"],
+        ["8. Поле 'Активен' может быть: да/нет, true/false, 1/0"],
+        [""],
+        ["ПРИМЕР ЗАПОЛНЕНИЯ:"],
+        ["Фамилия", "Имя", "Отчество", "Логин", "Email", "Пароль", "Телефон", "Курс", "Класс", "Дата рождения", "Адрес", "Активен"],
+        ["Петров", "Петр", "Петрович", "petrov_2024", "petrov@mail.ru", "pass123", "+79991112233", "2", "10Б", "10.08.2007", "ул. Ленина 5", "да"],
+    ]
+    
+    for row_num, row_data in enumerate(instruction_data, 1):
+        for col_num, value in enumerate(row_data, 1):
+            cell = ws_instruction.cell(row=row_num, column=col_num)
+            cell.value = value
+            if row_num == 1:
+                cell.font = Font(bold=True, size=14)
+    
+    # Автоподбор ширины для инструкции
+    ws_instruction.column_dimensions['A'].width = 60
+    
+    # Устанавливаем ширину колонок для шаблона
+    for col_num in range(1, 13):
+        column_letter = get_column_letter(col_num)
+        if col_num <= 6:  # Логин, пароль и т.д.
+            ws.column_dimensions[column_letter].width = 20
+        elif col_num == 10:  # Дата рождения
+            ws.column_dimensions[column_letter].width = 18
+        elif col_num == 11:  # Адрес
+            ws.column_dimensions[column_letter].width = 30
+        else:
+            ws.column_dimensions[column_letter].width = 15
+    
+    filename = f"shablon_importa_uchenikov.xlsx"
+    
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    wb.save(response)
+    
+    return response
+
+
+@require_http_methods(["POST"])
+@custom_login_required
+@admin_required
+def import_students_excel(request):
+    """Импорт учеников из Excel файла"""
+    
+    if request.method == 'POST' and request.FILES.get('excel_file'):
+        excel_file = request.FILES['excel_file']
+        
+        # Проверка расширения файла
+        if not excel_file.name.endswith(('.xlsx', '.xls')):
+            messages.error(request, 'Пожалуйста, загрузите файл формата .xlsx или .xls')
+            return redirect('students_list')
+        
+        try:
+            # Загружаем рабочую книгу
+            wb = openpyxl.load_workbook(excel_file, data_only=True)
+            ws = wb.active
+            
+            # Проверяем, что файл не пустой
+            if ws.max_row < 2:
+                messages.error(request, 'Файл не содержит данных для импорта')
+                return redirect('students_list')
+            
+            # Получаем заголовки для проверки
+            headers = []
+            for col in range(1, ws.max_column + 1):
+                header = ws.cell(row=1, column=col).value
+                if header:
+                    # Убираем звездочку из заголовка для сравнения
+                    clean_header = header.replace('*', '').strip()
+                    headers.append(clean_header)
+            
+            # Проверяем наличие обязательных колонок
+            required_columns = ['Фамилия', 'Имя', 'Отчество', 'Логин', 'Email', 'Пароль', 'Курс']
+            missing_columns = []
+            for req in required_columns:
+                if req not in headers:
+                    missing_columns.append(req)
+            
+            if missing_columns:
+                messages.error(request, f'В файле отсутствуют обязательные колонки: {", ".join(missing_columns)}')
+                return redirect('students_list')
+            
+            # Статистика импорта
+            created_count = 0
+            updated_count = 0
+            error_count = 0
+            errors = []
+            
+            # Получаем группу students
+            student_group_role = Group.objects.get(name='student')
+            
+            # Кэш для классов (чтобы не делать запросы к БД для каждой строки)
+            group_cache = {}
+            
+            # Обрабатываем строки (начиная со 2 строки)
+            for row_num in range(2, ws.max_row + 1):
+                try:
+                    # Пропускаем пустые строки
+                    last_name = ws.cell(row=row_num, column=headers.index('Фамилия') + 1).value
+                    if not last_name or str(last_name).strip() == '':
+                        continue
+                    
+                    # Собираем данные из строки
+                    first_name = ws.cell(row=row_num, column=headers.index('Имя') + 1).value
+                    patronymic = ws.cell(row=row_num, column=headers.index('Отчество') + 1).value
+                    username = ws.cell(row=row_num, column=headers.index('Логин') + 1).value
+                    email = ws.cell(row=row_num, column=headers.index('Email') + 1).value
+                    password = ws.cell(row=row_num, column=headers.index('Пароль') + 1).value
+                    
+                    # Преобразуем значения в строки
+                    last_name = str(last_name).strip() if last_name else ''
+                    first_name = str(first_name).strip() if first_name else ''
+                    patronymic = str(patronymic).strip() if patronymic else ''
+                    username = str(username).strip() if username else ''
+                    email = str(email).strip() if email else ''
+                    password = str(password).strip() if password else ''
+                    
+                    # Проверка обязательных полей
+                    if not all([last_name, first_name, patronymic, username, email, password]):
+                        errors.append(f'Строка {row_num}: Заполните все обязательные поля')
+                        error_count += 1
+                        continue
+                    
+                    # Проверка длины пароля
+                    if len(password) < 6:
+                        errors.append(f'Строка {row_num}: Пароль должен быть не менее 6 символов')
+                        error_count += 1
+                        continue
+                    
+                    # Курс
+                    course_col = headers.index('Курс') + 1
+                    course_val = ws.cell(row=row_num, column=course_col).value
+                    try:
+                        course = int(float(course_val)) if course_val else 1
+                        if course not in [1, 2, 3, 4]:
+                            course = 1
+                    except (ValueError, TypeError):
+                        course = 1
+                    
+                    # Телефон (необязательный)
+                    phone = ''
+                    if 'Телефон' in headers:
+                        phone_col = headers.index('Телефон') + 1
+                        phone_val = ws.cell(row=row_num, column=phone_col).value
+                        phone = str(phone_val).strip() if phone_val else ''
+                    
+                    # Класс (необязательный)
+                    student_group = None
+                    if 'Класс' in headers:
+                        group_col = headers.index('Класс') + 1
+                        group_name = ws.cell(row=row_num, column=group_col).value
+                        if group_name:
+                            group_name = str(group_name).strip()
+                            # Используем кэш
+                            if group_name in group_cache:
+                                student_group = group_cache[group_name]
+                            else:
+                                try:
+                                    student_group = StudentGroup.objects.get(name=group_name)
+                                    group_cache[group_name] = student_group
+                                except StudentGroup.DoesNotExist:
+                                    errors.append(f'Строка {row_num}: Класс "{group_name}" не найден в системе')
+                                    error_count += 1
+                                    continue
+                    
+                    # Дата рождения
+                    birth_date = None
+                    if 'Дата рождения (ДД.ММ.ГГГГ)' in headers:
+                        birth_col = headers.index('Дата рождения (ДД.ММ.ГГГГ)') + 1
+                        birth_val = ws.cell(row=row_num, column=birth_col).value
+                        if birth_val:
+                            try:
+                                if isinstance(birth_val, datetime):
+                                    birth_date = birth_val.date()
+                                elif isinstance(birth_val, str):
+                                    # Пробуем разные форматы
+                                    for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%Y-%m-%d']:
+                                        try:
+                                            birth_date = datetime.strptime(birth_val.strip(), fmt).date()
+                                            break
+                                        except ValueError:
+                                            continue
+                            except:
+                                pass
+                    
+                    # Адрес
+                    address = ''
+                    if 'Адрес' in headers:
+                        addr_col = headers.index('Адрес') + 1
+                        addr_val = ws.cell(row=row_num, column=addr_col).value
+                        address = str(addr_val).strip() if addr_val else ''
+                    
+                    # Активен
+                    is_active = True
+                    if 'Активен (да/нет)' in headers:
+                        active_col = headers.index('Активен (да/нет)') + 1
+                        active_val = ws.cell(row=row_num, column=active_col).value
+                        if active_val:
+                            active_str = str(active_val).lower().strip()
+                            if active_str in ['нет', 'no', 'false', '0', '']:
+                                is_active = False
+                    
+                    # Проверяем, существует ли пользователь с таким логином или email
+                    user = None
+                    is_new = True
+                    
+                    try:
+                        user = User.objects.get(username=username)
+                        is_new = False
+                        # Обновляем существующего пользователя
+                        user.email = email
+                        user.first_name = first_name
+                        user.last_name = last_name
+                        user.is_active = is_active
+                        if password and password != '********':
+                            user.set_password(password)
+                        user.save()
+                        
+                        # Обновляем профиль
+                        profile, created = StudentProfile.objects.get_or_create(
+                            user=user,
+                            defaults={
+                                'patronymic': patronymic,
+                                'course': course,
+                                'phone': phone,
+                                'birth_date': birth_date,
+                                'address': address,
+                                'student_group': student_group
+                            }
+                        )
+                        if not created:
+                            profile.patronymic = patronymic
+                            profile.course = course
+                            profile.phone = phone
+                            profile.birth_date = birth_date
+                            profile.address = address
+                            profile.student_group = student_group
+                            profile.save()
+                        
+                        updated_count += 1
+                        
+                    except User.DoesNotExist:
+                        # Проверяем email на уникальность
+                        if User.objects.filter(email=email).exists():
+                            errors.append(f'Строка {row_num}: Email {email} уже используется другим пользователем')
+                            error_count += 1
+                            continue
+                        
+                        # Создаем нового пользователя
+                        user = User.objects.create_user(
+                            username=username,
+                            email=email,
+                            password=password,
+                            first_name=first_name,
+                            last_name=last_name,
+                            is_active=is_active
+                        )
+                        
+                        # Добавляем в группу students
+                        user.groups.add(student_group_role)
+                        
+                        # Создаем профиль ученика
+                        StudentProfile.objects.create(
+                            user=user,
+                            patronymic=patronymic,
+                            phone=phone,
+                            birth_date=birth_date,
+                            address=address,
+                            course=course,
+                            student_group=student_group
+                        )
+                        
+                        created_count += 1
+                        
+                except Exception as e:
+                    errors.append(f'Строка {row_num}: Ошибка - {str(e)}')
+                    error_count += 1
+            
+            # Формируем сообщение о результате
+            if created_count > 0 or updated_count > 0:
+                success_msg = f'✅ Импорт завершен: создано {created_count} учеников, обновлено {updated_count} учеников'
+                if error_count > 0:
+                    success_msg += f', ошибок: {error_count}'
+                messages.success(request, success_msg)
+                
+                # Если есть ошибки, показываем их
+                if errors:
+                    error_text = "\n".join(errors[:10])  # Показываем первые 10 ошибок
+                    if len(errors) > 10:
+                        error_text += f"\n...и еще {len(errors) - 10} ошибок"
+                    messages.warning(request, f'Ошибки при импорте:\n{error_text}')
+            else:
+                messages.error(request, f'Не удалось импортировать данные. Ошибок: {error_count}')
+            
+        except Exception as e:
+            messages.error(request, f'Ошибка при обработке файла: {str(e)}')
+        
+        return redirect('students_list')
+    
+    messages.error(request, 'Пожалуйста, выберите файл для импорта')
+    return redirect('students_list')
+@custom_login_required
+@admin_required
+def export_groups_excel(request):
+    """Экспорт всех групп с учениками в Excel (каждая группа - отдельный лист)"""
+    
+    # Получаем все группы с учениками
+    groups = StudentGroup.objects.all().order_by('year', 'name').prefetch_related(
+        'students__user'
+    )
+    
+    # Создаем Excel файл
+    wb = openpyxl.Workbook()
+    
+    # Удаляем стандартный лист (мы создадим свои)
+    if 'Sheet' in wb.sheetnames:
+        wb.remove(wb['Sheet'])
+    
+    # Если нет групп, создаем информационный лист
+    if not groups:
+        ws = wb.create_sheet("Информация")
+        ws.cell(row=1, column=1).value = "В системе нет групп"
+        ws.cell(row=1, column=1).font = Font(bold=True, size=14)
+        ws.column_dimensions['A'].width = 30
+    else:
+        # Для каждой группы создаем отдельный лист
+        for group in groups:
+            # Название листа (обрезаем если слишком длинное)
+            sheet_name = f"{group.name}"[:31]  # Excel ограничение на длину имени листа
+            
+            # Проверяем уникальность имени
+            base_name = sheet_name
+            counter = 1
+            while sheet_name in wb.sheetnames:
+                sheet_name = f"{base_name}_{counter}"[:31]
+                counter += 1
+            
+            ws = wb.create_sheet(sheet_name)
+            
+            # Заголовок группы
+            title_cell = ws.cell(row=1, column=1)
+            title_cell.value = f"Класс: {group.name} ({group.year} курс)"
+            title_cell.font = Font(bold=True, size=14)
+            ws.merge_cells('A1:E1')
+            title_cell.alignment = Alignment(horizontal="center")
+            
+            # Информация о классном руководителе
+            if group.curator:
+                curator_name = group.curator.get_full_name()
+                curator_cell = ws.cell(row=2, column=1)
+                curator_cell.value = f"Классный руководитель: {curator_name}"
+                curator_cell.font = Font(bold=True, italic=True)
+                ws.merge_cells('A2:E2')
+                curator_cell.alignment = Alignment(horizontal="center")
+            
+            # Заголовки таблицы
+            headers = ['№', 'Фамилия', 'Имя', 'Отчество', 'Статус']
+            header_row = 4 if group.curator else 3
+            
+            header_font = Font(bold=True, color="FFFFFF")
+            header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+            header_alignment = Alignment(horizontal="center", vertical="center")
+            
+            for col_num, header in enumerate(headers, 1):
+                cell = ws.cell(row=header_row, column=col_num)
+                cell.value = header
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+            
+            # Получаем учеников группы
+            students = group.students.all().select_related('user').order_by('user__last_name', 'user__first_name')
+            
+            # Заполняем данными
+            for row_num, student in enumerate(students, header_row + 1):
+                ws.cell(row=row_num, column=1).value = row_num - header_row
+                ws.cell(row=row_num, column=2).value = student.user.last_name
+                ws.cell(row=row_num, column=3).value = student.user.first_name
+                ws.cell(row=row_num, column=4).value = student.patronymic or ''
+                
+                status = 'Активен' if student.user.is_active else 'Заблокирован'
+                ws.cell(row=row_num, column=5).value = status
+                
+                # Выравнивание
+                for col_num in range(1, 6):
+                    cell = ws.cell(row=row_num, column=col_num)
+                    cell.alignment = Alignment(horizontal="left", vertical="center")
+                    
+                    # Цвет статуса
+                    if col_num == 5:
+                        if student.user.is_active:
+                            cell.font = Font(color="008000")  # Зеленый
+                        else:
+                            cell.font = Font(color="FF0000")  # Красный
+            
+            # Если в группе нет учеников
+            if not students:
+                no_students_cell = ws.cell(row=header_row + 1, column=1)
+                no_students_cell.value = "В группе нет учеников"
+                no_students_cell.font = Font(italic=True, color="666666")
+                ws.merge_cells(start_row=header_row + 1, start_column=1, end_row=header_row + 1, end_column=5)
+                no_students_cell.alignment = Alignment(horizontal="center")
+            
+            # Статистика группы
+            stats_row = header_row + len(students) + 3
+            ws.cell(row=stats_row, column=1).value = f"Всего учеников: {len(students)}"
+            ws.cell(row=stats_row, column=1).font = Font(bold=True)
+            ws.merge_cells(start_row=stats_row, start_column=1, end_row=stats_row, end_column=5)
+            
+            active_count = students.filter(user__is_active=True).count()
+            inactive_count = len(students) - active_count
+            
+            ws.cell(row=stats_row + 1, column=1).value = f"Активных: {active_count}"
+            ws.cell(row=stats_row + 1, column=1).font = Font(color="008000")
+            ws.merge_cells(start_row=stats_row + 1, start_column=1, end_row=stats_row + 1, end_column=5)
+            
+            ws.cell(row=stats_row + 2, column=1).value = f"Заблокированных: {inactive_count}"
+            ws.cell(row=stats_row + 2, column=1).font = Font(color="FF0000")
+            ws.merge_cells(start_row=stats_row + 2, start_column=1, end_row=stats_row + 2, end_column=5)
+            
+            # Автоподбор ширины колонок
+            for col_num in range(1, 6):
+                column_letter = get_column_letter(col_num)
+                
+                max_length = len(headers[col_num-1])
+                for row_num in range(header_row + 1, header_row + len(students) + 1):
+                    cell_value = ws.cell(row=row_num, column=col_num).value
+                    if cell_value:
+                        max_length = max(max_length, len(str(cell_value)))
+                
+                adjusted_width = min(max_length + 2, 40)
+                ws.column_dimensions[column_letter].width = adjusted_width
+    
+    # Создаем итоговый лист со сводкой
+    summary_sheet = wb.create_sheet("Сводка по классам", 0)  # Первый лист
+    
+    # Заголовок сводки
+    summary_sheet.cell(row=1, column=1).value = "СВОДКА ПО КЛАССАМ"
+    summary_sheet.cell(row=1, column=1).font = Font(bold=True, size=16)
+    summary_sheet.merge_cells('A1:D1')
+    summary_sheet.cell(row=1, column=1).alignment = Alignment(horizontal="center")
+    
+    # Заголовки таблицы сводки
+    summary_headers = ['№', 'Класс', 'Курс', 'Классный руководитель', 'Учеников', 'Активных', 'Заблокировано']
+    header_row = 3
+    
+    for col_num, header in enumerate(summary_headers, 1):
+        cell = summary_sheet.cell(row=header_row, column=col_num)
+        cell.value = header
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+    
+    # Заполняем сводку
+    for idx, group in enumerate(groups, 1):
+        student_count = group.students.count()
+        active_count = group.students.filter(user__is_active=True).count()
+        inactive_count = student_count - active_count
+        
+        summary_sheet.cell(row=header_row + idx, column=1).value = idx
+        summary_sheet.cell(row=header_row + idx, column=2).value = group.name
+        summary_sheet.cell(row=header_row + idx, column=3).value = f"{group.year} курс"
+        summary_sheet.cell(row=header_row + idx, column=4).value = group.curator.get_full_name() if group.curator else "Не назначен"
+        summary_sheet.cell(row=header_row + idx, column=5).value = student_count
+        summary_sheet.cell(row=header_row + idx, column=6).value = active_count
+        summary_sheet.cell(row=header_row + idx, column=7).value = inactive_count
+        
+        # Выравнивание
+        for col_num in range(1, 8):
+            cell = summary_sheet.cell(row=header_row + idx, column=col_num)
+            cell.alignment = Alignment(horizontal="center" if col_num > 4 else "left", vertical="center")
+    
+    # Итоги в сводке
+    total_row = header_row + len(groups) + 2
+    total_students = sum(g.students.count() for g in groups)
+    total_active = sum(g.students.filter(user__is_active=True).count() for g in groups)
+    total_inactive = total_students - total_active
+    
+    summary_sheet.cell(row=total_row, column=1).value = "ИТОГО:"
+    summary_sheet.cell(row=total_row, column=1).font = Font(bold=True)
+    summary_sheet.merge_cells(start_row=total_row, start_column=1, end_row=total_row, end_column=4)
+    summary_sheet.cell(row=total_row, column=5).value = total_students
+    summary_sheet.cell(row=total_row, column=6).value = total_active
+    summary_sheet.cell(row=total_row, column=7).value = total_inactive
+    
+    for col_num in range(5, 8):
+        summary_sheet.cell(row=total_row, column=col_num).font = Font(bold=True)
+    
+    # Автоподбор ширины для сводки
+    for col_num, header in enumerate(summary_headers, 1):
+        column_letter = get_column_letter(col_num)
+        
+        max_length = len(header)
+        for row_num in range(header_row + 1, header_row + len(groups) + 1):
+            cell_value = summary_sheet.cell(row=row_num, column=col_num).value
+            if cell_value:
+                max_length = max(max_length, len(str(cell_value)))
+        
+        adjusted_width = min(max_length + 2, 30)
+        summary_sheet.column_dimensions[column_letter].width = adjusted_width
+    
+    # Формируем имя файла
+    filename = f"klassy_s_uchenikami_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    wb.save(response)
+    
+    return response
