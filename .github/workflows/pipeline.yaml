@@ -34,6 +34,7 @@ jobs: # этапы
       - name: Lint with pylint
         run: |
           source .venv/bin/activate
+          pip install pylint-django    
           pylint --load-plugins=pylint_django \
                 --disable=imported-auth-user,django-not-configured,function-redefined \
                 --errors-only **/*.py --ignore=migrations,.venv
