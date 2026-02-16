@@ -23,7 +23,6 @@ jobs: # этапы
           python3 -m venv .venv
           source .venv/bin/activate
           pip install --upgrade pip
-          pip install pylint
           pip install -r requirements.txt
 
       - name: Check Django settings
@@ -32,10 +31,14 @@ jobs: # этапы
           python3 manage.py check
           echo "Проект успешно собирается"
 
-      - name: Check Django migrations
+      - name: Check with pylint
         run: |
           source .venv/bin/activate
-          pylint --errors-only **/*.py --ignore-paths=.venv
+          pip install pylint-django    
+          pylint --errors-only \
+                --load-plugins=pylint_django \
+                **/*.py \
+                --ignore-paths=.venv,migrations
           echo "Синтаксических ошибок не найдено"
 
   test:
