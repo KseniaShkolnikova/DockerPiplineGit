@@ -27,7 +27,7 @@
         </nav>
 
         <!-- Заголовок -->
-        <div class="content-header mb-4 d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div class="content-header mb-4">
             <div class="header-left">
                 <h1 class="content-title mb-1">{{ teacher_user.get_full_name }}</h1>
                 <p class="content-subtitle mb-0">
@@ -36,81 +36,80 @@
                     {% if teacher_user.email %}{{ teacher_user.email }}{% endif %}
                 </p>
             </div>
+            <div class="header-actions">
+                {% if request.resolver_match.app_name == 'education_department' %}
+                    <a href="{% url 'education_department:teachers_overview' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i>
+                        Назад
+                    </a>
+                {% else %}
+                    <a href="{% url 'teachers_overview' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i>
+                        Назад
+                    </a>
+                {% endif %}
 
-            <div class="header-right">
-                <div class="btn-group">
-                    {% if request.resolver_match.app_name == 'education_department' %}
-                        <a href="{% url 'education_department:teachers_overview' %}" class="btn btn-outline-secondary">
-                            <i class="bi bi-arrow-left"></i> Назад
-                        </a>
-                    {% else %}
-                        <a href="{% url 'teachers_overview' %}" class="btn btn-outline-secondary">
-                            <i class="bi bi-arrow-left"></i> Назад
-                        </a>
-                    {% endif %}
-
-                    {# Редактирование доступно только админу/суперпользователю #}
-                    {% if request.user.is_superuser or request.user.groups.all.0.name == 'admin' %}
-                        <a href="{% url 'teacher_edit' teacher_user.id %}" class="btn btn-outline-primary">
-                            <i class="bi bi-pencil"></i> Редактировать
-                        </a>
-                    {% endif %}
-                </div>
+                {# Редактирование доступно только админу/суперпользователю #}
+                {% if request.user.is_superuser or request.user.groups.all.0.name == 'admin' %}
+                    <a href="{% url 'teacher_edit' teacher_user.id %}" class="btn btn-outline-primary">
+                        <i class="bi bi-pencil"></i>
+                        Редактировать
+                    </a>
+                {% endif %}
             </div>
         </div>
 
-        <!-- Основная информация -->
+        <!-- Основная информация и статистика в одном ряду -->
         <div class="row mb-4">
+            <!-- Карточка профиля -->
             <div class="col-md-4">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <div class="text-center mb-4">
-                            <div class="user-avatar large mx-auto mb-3">
-                                {{ teacher_user.username|first|upper }}
-                            </div>
-                            <h5 class="mb-1">{{ teacher_user.get_full_name }}</h5>
-                            <p class="text-muted mb-2">{{ teacher_user.username }}</p>
-                            {% if teacher_user.is_active %}
-                                <span class="badge bg-success">Активен</span>
-                            {% else %}
-                                <span class="badge bg-danger">Неактивен</span>
-                            {% endif %}
+                <div class="card">
+                    <div class="card-body text-center">
+                        <div class="user-avatar large mx-auto mb-3">
+                            {{ teacher_user.username|first|upper }}
                         </div>
+                        <h5 class="mb-1">{{ teacher_user.get_full_name }}</h5>
+                        <p class="text-muted mb-2">{{ teacher_user.username }}</p>
+                        {% if teacher_user.is_active %}
+                            <span class="badge bg-success mb-3">Активен</span>
+                        {% else %}
+                            <span class="badge bg-danger mb-3">Неактивен</span>
+                        {% endif %}
 
-                        <table class="table table-sm table-borderless mb-0">
+                        <table class="table table-sm table-borderless text-start">
                             {% if profile %}
                             <tr>
-                                <td><strong>Отчество:</strong></td>
-                                <td>{{ profile.patronymic }}</td>
+                                <td class="ps-0"><strong>Отчество:</strong></td>
+                                <td class="pe-0">{{ profile.patronymic }}</td>
                             </tr>
                             <tr>
-                                <td><strong>Телефон:</strong></td>
-                                <td>{{ profile.phone|default:"-" }}</td>
+                                <td class="ps-0"><strong>Телефон:</strong></td>
+                                <td class="pe-0">{{ profile.phone|default:"-" }}</td>
                             </tr>
                             <tr>
-                                <td><strong>Дата рождения:</strong></td>
-                                <td>
+                                <td class="ps-0"><strong>Дата рождения:</strong></td>
+                                <td class="pe-0">
                                     {% if profile.birth_date %}
                                         {{ profile.birth_date|date:"d.m.Y" }}
                                     {% else %}-{% endif %}
                                 </td>
                             </tr>
                             <tr>
-                                <td><strong>Квалификация:</strong></td>
-                                <td>{{ profile.qualification }}</td>
+                                <td class="ps-0"><strong>Квалификация:</strong></td>
+                                <td class="pe-0">{{ profile.qualification }}</td>
                             </tr>
                             {% endif %}
                             <tr>
-                                <td><strong>Email:</strong></td>
-                                <td>{{ teacher_user.email|default:"-" }}</td>
+                                <td class="ps-0"><strong>Email:</strong></td>
+                                <td class="pe-0">{{ teacher_user.email|default:"-" }}</td>
                             </tr>
                             <tr>
-                                <td><strong>Дата регистрации:</strong></td>
-                                <td>{{ teacher_user.date_joined|date:"d.m.Y" }}</td>
+                                <td class="ps-0"><strong>Дата регистрации:</strong></td>
+                                <td class="pe-0">{{ teacher_user.date_joined|date:"d.m.Y" }}</td>
                             </tr>
                             <tr>
-                                <td><strong>Последний вход:</strong></td>
-                                <td>
+                                <td class="ps-0"><strong>Последний вход:</strong></td>
+                                <td class="pe-0">
                                     {% if teacher_user.last_login %}
                                         {{ teacher_user.last_login|date:"d.m.Y H:i" }}
                                     {% else %}-{% endif %}
@@ -121,9 +120,10 @@
                 </div>
             </div>
 
-            <!-- Статистика -->
+            <!-- Блок статистики -->
             <div class="col-md-8">
-                <div class="stats-grid h-100">
+                <!-- Статистика в 4 карточках -->
+                <div class="stats-grid mb-4">
                     <div class="stat-card">
                         <div class="stat-header">
                             <div class="stat-icon primary">
@@ -170,7 +170,7 @@
                 </div>
 
                 <!-- Типы оценок -->
-                <div class="card mt-4">
+                <div class="card">
                     <div class="card-header">
                         <h5 class="card-title mb-0">Статистика по типам оценок</h5>
                     </div>
@@ -179,24 +179,22 @@
                             {% for stat in grades_by_type %}
                             <div class="col-md-4 mb-3">
                                 <div class="card border">
-                                    <div class="card-body text-center">
-                                        <h4 class="text-primary">{{ stat.count }}</h4>
-                                        <p class="text-muted mb-1">{{ stat.name }}</p>
-                                        <div>
-                                            <span class="badge
-                                                {% if stat.avg >= 4.5 %}bg-success
-                                                {% elif stat.avg >= 3.5 %}bg-warning text-dark
-                                                {% else %}bg-danger{% endif %}">
-                                                {{ stat.avg }} средний
-                                            </span>
-                                        </div>
-                                        <small class="text-muted">{{ stat.percentage }}% от всех</small>
+                                    <div class="card-body text-center p-3">
+                                        <h4 class="text-primary mb-2">{{ stat.count }}</h4>
+                                        <p class="text-muted mb-2">{{ stat.name }}</p>
+                                        <span class="badge d-inline-block mb-2
+                                            {% if stat.avg >= 4.5 %}bg-success
+                                            {% elif stat.avg >= 3.5 %}bg-warning text-dark
+                                            {% else %}bg-danger{% endif %}">
+                                            {{ stat.avg }} средний
+                                        </span>
+                                        <small class="text-muted d-block">{{ stat.percentage }}% от всех</small>
                                     </div>
                                 </div>
                             </div>
                             {% empty %}
                             <div class="col-12">
-                                <div class="text-center py-3">
+                                <div class="text-center py-4">
                                     <i class="bi bi-journal-x" style="font-size: 2rem; color: #dee2e6;"></i>
                                     <p class="text-muted mt-2">Нет данных о типах оценок</p>
                                 </div>
@@ -208,6 +206,7 @@
             </div>
         </div>
 
+        <!-- Предметы учителя и расписание/группы в два ряда -->
         <!-- Предметы учителя -->
         <div class="card mb-4">
             <div class="card-header">
@@ -216,7 +215,7 @@
             <div class="card-body">
                 <div class="row">
                     {% for stat in grades_by_subject %}
-                    <div class="col-md-6 mb-4">
+                    <div class="col-md-6 mb-3">
                         <div class="card border">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-start mb-3">
@@ -226,7 +225,6 @@
                                             <p class="text-muted small mb-0">{{ stat.subject.description|truncatechars:100 }}</p>
                                         {% endif %}
                                     </div>
-
                                     {% if request.resolver_match.app_name == 'education_department' %}
                                         <a href="{% url 'education_department:teacher_subject_performance' teacher_user.id stat.subject.id %}"
                                            class="btn btn-sm btn-outline-primary">
@@ -240,35 +238,37 @@
                                     {% endif %}
                                 </div>
 
-                                <div class="stats-row mb-3">
-                                    <div class="stat-item">
-                                        <div class="stat-value">{{ stat.total }}</div>
-                                        <div class="stat-label">Оценок</div>
+                                <div class="d-flex gap-4 mb-3">
+                                    <div class="text-center">
+                                        <div class="fw-bold">{{ stat.total }}</div>
+                                        <small class="text-muted">Оценок</small>
                                     </div>
-                                    <div class="stat-item">
-                                        <div class="stat-value">{{ stat.avg }}</div>
-                                        <div class="stat-label">Средний балл</div>
+                                    <div class="text-center">
+                                        <div class="fw-bold">{{ stat.avg }}</div>
+                                        <small class="text-muted">Средний балл</small>
                                     </div>
                                     {% if stat.first_date %}
-                                    <div class="stat-item">
-                                        <div class="stat-value">{{ stat.first_date|date:"d.m.Y" }}</div>
-                                        <div class="stat-label">Первая оценка</div>
+                                    <div class="text-center">
+                                        <div class="fw-bold">{{ stat.first_date|date:"d.m.Y" }}</div>
+                                        <small class="text-muted">Первая оценка</small>
                                     </div>
                                     {% endif %}
                                 </div>
 
                                 {% if stat.grade_distribution %}
-                                <div class="grade-distribution">
+                                <div>
                                     <small class="text-muted d-block mb-2">Распределение оценок:</small>
-                                    {% for value, data in stat.grade_distribution.items %}
-                                    <span class="badge
-                                        {% if value == 5 %}bg-success
-                                        {% elif value == 4 %}bg-info
-                                        {% elif value == 3 %}bg-warning text-dark
-                                        {% else %}bg-danger{% endif %} me-1 mb-1">
-                                        {{ value }}: {{ data.count }} ({{ data.percentage }}%)
-                                    </span>
-                                    {% endfor %}
+                                    <div class="d-flex flex-wrap gap-1">
+                                        {% for value, data in stat.grade_distribution.items %}
+                                        <span class="badge
+                                            {% if value == 5 %}bg-success
+                                            {% elif value == 4 %}bg-info
+                                            {% elif value == 3 %}bg-warning text-dark
+                                            {% else %}bg-danger{% endif %}">
+                                            {{ value }}: {{ data.count }} ({{ data.percentage }}%)
+                                        </span>
+                                        {% endfor %}
+                                    </div>
                                 </div>
                                 {% endif %}
                             </div>
@@ -286,11 +286,11 @@
             </div>
         </div>
 
-        <!-- Расписание и группы -->
-        <div class="row">
+        <!-- Расписание и группы в одном ряду -->
+        <div class="row mb-4">
             <!-- Расписание -->
             <div class="col-md-8">
-                <div class="card mb-4">
+                <div class="card h-100">
                     <div class="card-header">
                         <h5 class="card-title mb-0">Расписание</h5>
                     </div>
@@ -298,11 +298,11 @@
                         {% if schedule_by_day %}
                             <div class="schedule-tabs">
                                 {% for day_code, day_data in schedule_by_day.items %}
-                                <div class="schedule-day mb-4">
+                                <div class="schedule-day mb-4 pb-3">
                                     <h6 class="mb-3">{{ day_data.day_name }}</h6>
                                     <div class="list-group">
                                         {% for lesson in day_data.lessons %}
-                                        <div class="list-group-item">
+                                        <div class="list-group-item px-3 py-2">
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <div>
                                                     <strong>{{ lesson.lesson_number }} урок</strong>
@@ -342,7 +342,7 @@
 
             <!-- Группы -->
             <div class="col-md-4">
-                <div class="card mb-4">
+                <div class="card h-100">
                     <div class="card-header">
                         <h5 class="card-title mb-0">Классы</h5>
                     </div>
@@ -350,13 +350,12 @@
                         {% if teaching_groups %}
                         <div class="list-group list-group-flush">
                             {% for group in teaching_groups %}
-                            <div class="list-group-item">
+                            <div class="list-group-item px-0">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <strong>{{ group.name }}</strong>
                                         <div class="text-muted small">{{ group.year }} год обучения</div>
                                     </div>
-
                                     {% if request.resolver_match.app_name == 'education_department' %}
                                         <a href="{% url 'education_department:group_grades_detail' group.id %}"
                                            class="btn btn-sm btn-outline-primary">
@@ -442,6 +441,7 @@
     width: 80px;
     height: 80px;
     font-size: 32px;
+    line-height: 80px;
 }
 
 .stat-icon.primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
@@ -449,30 +449,6 @@
 .stat-icon.warning { background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); }
 .stat-icon.danger { background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%); }
 .stat-icon.secondary { background: linear-gradient(135deg, #a0aec0 0%, #718096 100%); }
-
-.stats-row {
-    display: flex;
-    gap: 1rem;
-}
-.stat-item {
-    text-align: center;
-}
-.stat-item .stat-value {
-    font-size: 1.25rem;
-    font-weight: 600;
-}
-.stat-item .stat-label {
-    font-size: 0.75rem;
-    color: #6c757d;
-}
-
-.schedule-day {
-    border-bottom: 1px solid #dee2e6;
-    padding-bottom: 1rem;
-}
-.schedule-day:last-child {
-    border-bottom: none;
-}
 
 .stats-grid {
     display: grid;
@@ -516,18 +492,8 @@
     color: #718096;
 }
 
-.grade-distribution {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-}
-
-/* Небольшие улучшения карточек, без глобальной ломки */
-.card {
-    border: 1px solid rgba(0,0,0,0.06);
-}
-.card-header {
-    background: transparent;
+.schedule-day:not(:last-child) {
+    border-bottom: 1px solid #dee2e6;
 }
 </style>
 {% endblock %}

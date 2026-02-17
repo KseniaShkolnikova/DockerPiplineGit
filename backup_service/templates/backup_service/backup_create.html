@@ -63,7 +63,7 @@
                     </div>
                     
                     <div style="display: flex; gap: 12px; margin-top: 24px;">
-                        <button type="submit" class="btn btn-success" {% if not commands_available %}disabled{% endif %}>
+                        <button type="submit" class="btn btn-success">
                             <i class="bi bi-cloud-arrow-up"></i>
                             Создать резервную копию
                         </button>
@@ -73,12 +73,7 @@
                         </a>
                     </div>
                     
-                    {% if not commands_available %}
-                    <div style="margin-top: 16px; padding: 12px; background: rgba(217, 119, 6, 0.1); border-radius: 8px; font-size: 0.875rem; color: var(--warning);">
-                        <i class="bi bi-info-circle"></i>
-                        Кнопка неактивна, так как отсутствуют необходимые команды
-                    </div>
-                    {% endif %}
+
                 </form>
             </div>
             

@@ -10,7 +10,7 @@
 
     <main class="main-content">
         <!-- Шапка -->
-        <div class="content-header mb-4">
+        <div class="content-header">
             <div class="header-left">
                 <h1 class="content-title">Оценки</h1>
                 <p class="content-subtitle">
@@ -27,7 +27,7 @@
         </div>
 
         <!-- Фильтры -->
-        <div class="filter-card mb-4">
+        <div class="filter-card">
             <form method="get" class="filter-form">
                 <div class="filter-row">
                     <div class="search-box">
@@ -59,14 +59,14 @@
                     
                     <input type="date" 
                            name="date_from" 
-                           class="form-control" 
+                           class="filter-select" 
                            style="width: 150px;"
                            value="{{ filters.date_from|default:'' }}"
                            placeholder="С даты">
                     
                     <input type="date" 
                            name="date_to" 
-                           class="form-control" 
+                           class="filter-select" 
                            style="width: 150px;"
                            value="{{ filters.date_to|default:'' }}"
                            placeholder="По дату">
@@ -86,35 +86,35 @@
         </div>
 
         <!-- Статистика -->
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
-            <div class="card text-center">
+        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="card" style="text-align: center;">
                 <div class="card-body">
-                    <div class="text-3xl font-bold text-success">{{ grade_stats.excellent|default:"0" }}</div>
-                    <div class="text-sm text-muted">Отличные (5)</div>
+                    <div style="font-size: 2rem; font-weight: bold; color: #10b981;">{{ grade_stats.excellent|default:"0" }}</div>
+                    <div style="font-size: 0.875rem; color: #6b7280;">Отличные (5)</div>
                 </div>
             </div>
-            <div class="card text-center">
+            <div class="card" style="text-align: center;">
                 <div class="card-body">
-                    <div class="text-3xl font-bold text-info">{{ grade_stats.good|default:"0" }}</div>
-                    <div class="text-sm text-muted">Хорошие (4)</div>
+                    <div style="font-size: 2rem; font-weight: bold; color: #3b82f6;">{{ grade_stats.good|default:"0" }}</div>
+                    <div style="font-size: 0.875rem; color: #6b7280;">Хорошие (4)</div>
                 </div>
             </div>
-            <div class="card text-center">
+            <div class="card" style="text-align: center;">
                 <div class="card-body">
-                    <div class="text-3xl font-bold text-warning">{{ grade_stats.satisfactory|default:"0" }}</div>
-                    <div class="text-sm text-muted">Удовлетв. (3)</div>
+                    <div style="font-size: 2rem; font-weight: bold; color: #f59e0b;">{{ grade_stats.satisfactory|default:"0" }}</div>
+                    <div style="font-size: 0.875rem; color: #6b7280;">Удовлетв. (3)</div>
                 </div>
             </div>
-            <div class="card text-center">
+            <div class="card" style="text-align: center;">
                 <div class="card-body">
-                    <div class="text-3xl font-bold text-danger">{{ grade_stats.poor|default:"0" }}</div>
-                    <div class="text-sm text-muted">Неудовл. (2)</div>
+                    <div style="font-size: 2rem; font-weight: bold; color: #ef4444;">{{ grade_stats.poor|default:"0" }}</div>
+                    <div style="font-size: 0.875rem; color: #6b7280;">Неудовл. (2)</div>
                 </div>
             </div>
-            <div class="card text-center">
+            <div class="card" style="text-align: center;">
                 <div class="card-body">
-                    <div class="text-3xl font-bold text-primary">{{ grade_stats.total|default:"0" }}</div>
-                    <div class="text-sm text-muted">Всего оценок</div>
+                    <div style="font-size: 2rem; font-weight: bold; color: #3b82f6;">{{ grade_stats.total|default:"0" }}</div>
+                    <div style="font-size: 0.875rem; color: #6b7280;">Всего оценок</div>
                 </div>
             </div>
         </div>
@@ -122,7 +122,7 @@
         <!-- Таблица оценок -->
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title mb-0">История оценок</h2>
+                <h2 class="card-title">История оценок</h2>
             </div>
             <div class="card-body">
                 {% if page_obj %}
@@ -173,7 +173,7 @@
                                         </a>
                                         <form method="post" 
                                               action="{% url 'teacher_portal:delete_grade' grade.id %}" 
-                                              class="inline-form"
+                                              style="display: inline;"
                                               onsubmit="return confirm('Удалить эту оценку?')">
                                             {% csrf_token %}
                                             <button type="submit" class="btn-icon danger" title="Удалить">
@@ -230,7 +230,7 @@
                     <i class="bi bi-journal-check"></i>
                     <h3>Оценок нет</h3>
                     <p>Вы еще не выставляли оценок</p>
-                    <a href="{% url 'teacher_portal:add_grade' %}" class="btn btn-primary mt-3">
+                    <a href="{% url 'teacher_portal:add_grade' %}" class="btn btn-primary">
                         <i class="bi bi-plus-circle"></i>
                         Выставить первую оценку
                     </a>

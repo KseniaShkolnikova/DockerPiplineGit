@@ -121,7 +121,6 @@
                                 <th>Контакты</th>
                                 <th>Предметы</th>
                                 <th>Классы</th>
-                                <th>Оценки</th>
                                 <th>Статистика</th>
                                 <th>Действия</th>
                             </tr>
@@ -179,33 +178,9 @@
                                         {% if teacher.teaching_groups|length > 2 %}
                                         <small class="text-muted">+{{ teacher.teaching_groups|length|add:"-2" }} еще</small>
                                         {% endif %}
-                                        <div class="text-muted small mt-1">Всего: {{ teacher.group_count }}</div>
                                     </div>
                                 </td>
-                                <td>
-                                    <div class="grades-info">
-                                        <div class="mb-1">
-                                            <span class="badge bg-info">{{ teacher.grades_total }}</span>
-                                            <small class="text-muted">оценок</small>
-                                        </div>
-                                        {% if teacher.grades_avg > 0 %}
-                                        <div>
-                                            <span class="badge 
-                                                {% if teacher.grades_avg >= 4.5 %}bg-success
-                                                {% elif teacher.grades_avg >= 3.5 %}bg-warning text-dark
-                                                {% else %}bg-danger{% endif %}">
-                                                {{ teacher.grades_avg }}
-                                            </span>
-                                            <small class="text-muted">средний балл</small>
-                                        </div>
-                                        {% endif %}
-                                        {% if teacher.grades_latest %}
-                                        <div class="text-muted small mt-1">
-                                            Последняя: {{ teacher.grades_latest|date:"d.m.Y" }}
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </td>
+                                
                                 <td>
                                     <div class="teacher-stats">
                                         <div class="mb-1">
