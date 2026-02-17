@@ -40,7 +40,7 @@ jobs: # этапы
                 --errors-only **/*.py --ignore=migrations,.venv
 
   test:
-    name: Test Django static file
+    name: Test Django static file and models
     runs-on: ubuntu-latest # раннер
     needs: validate
     steps: # шаги
